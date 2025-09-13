@@ -16,10 +16,10 @@
       "@types/*": ["src/types/*"],
       "@state/*": ["src/state/*"],
       "@engine/*": ["src/engine/*"],
+      "@importers/*": ["src/importers/*"],
       "@components/*": ["src/components/*"],
       "@pages/*": ["src/pages/*"]
     }
   },
   "include": ["src"]
 }
-

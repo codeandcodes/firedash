@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useApp } from '@state/AppContext'
 import type { Snapshot, Account, HoldingLot, RealEstate, Contribution, Expense, SocialSecurity, Assumptions } from '@types/schema'
 import { validateSnapshot } from '@types/schema'
+import { importMonarchInvestments } from '@importers/monarch'
 
 function nowIso() {
   return new Date().toISOString()
@@ -139,6 +140,26 @@ export function BuilderPage() {
     fetch('/examples/sample_snapshot.json').then(r => r.json()).then((j) => setDraft(j))
   }
 
+  // Monarch JSON Paste
+  const [monarchRaw, setMonarchRaw] = useState('')
+  const [importInfo, setImportInfo] = useState<string>('')
+  function importMonarch() {
+    try {
+      const parsed = JSON.parse(monarchRaw)
+      const res = importMonarchInvestments(parsed)
+      setImportInfo(`Imported ${res.meta.positions} positions into ${res.meta.accounts} accounts${res.meta.lastSyncedAt ? ` (last sync ${res.meta.lastSyncedAt})` : ''}`)
+      setDraft((d) => ({
+        ...d,
+        timestamp: res.meta.lastSyncedAt || d.timestamp,
+        accounts: res.accounts
+      }))
+      setErrors([])
+    } catch (e: any) {
+      setErrors([`Monarch import failed: ${e.message}`])
+      setImportInfo('')
+    }
+  }
+
   return (
     <section>
       <h1>Snapshot Builder</h1>
@@ -152,6 +173,16 @@ export function BuilderPage() {
       )}
 
       <div className="cards">
+        <div className="card">
+          <div className="card-title">Import from Monarch JSON</div>
+          <div style={{ display: 'grid', gap: 8 }}>
+            <textarea placeholder="Paste Monarch investments JSON here" value={monarchRaw} onChange={(e) => setMonarchRaw(e.target.value)} style={{ width: '100%', height: 180 }} />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={importMonarch}>Import Investments</button>
+              {importInfo && <span style={{ color: 'var(--muted)' }}>{importInfo}</span>}
+            </div>
+          </div>
+        </div>
         <div className="card">
           <div className="card-title">General</div>
           <div style={{ display: 'grid', gap: 8 }}>
@@ -313,4 +344,3 @@ export function BuilderPage() {
     </section>
   )
 }
-

@@ -7,9 +7,9 @@ export default defineConfig({
       '@types': path.resolve(__dirname, 'src/types'),
       '@state': path.resolve(__dirname, 'src/state'),
       '@engine': path.resolve(__dirname, 'src/engine'),
+      '@importers': path.resolve(__dirname, 'src/importers'),
       '@components': path.resolve(__dirname, 'src/components'),
       '@pages': path.resolve(__dirname, 'src/pages')
     }
   }
 })
-
