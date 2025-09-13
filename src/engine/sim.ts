@@ -49,7 +49,7 @@ interface LoopOptions {
 }
 
 function runPath(initial: number, targets: Record<AssetClass, number>, opt: LoopOptions): PathStats {
-  let balances: Balances = { US_STOCK: 0, INTL_STOCK: 0, BONDS: 0, REIT: 0, CASH: 0, REAL_ESTATE: 0 }
+  let balances: Balances = { US_STOCK: 0, INTL_STOCK: 0, BONDS: 0, REIT: 0, CASH: 0, REAL_ESTATE: 0, CRYPTO: 0 }
   // seed by targets
   ASSET_CLASSES.forEach((k) => (balances[k] = initial * (targets[k] || 0)))
 
@@ -229,7 +229,7 @@ export function simulateSeries(snapshot: Snapshot, options: SimOptions & { maxPa
 
 function runPathWithSeries(initial: number, targets: Record<AssetClass, number>, opt: LoopOptions) {
   // Initialize balances
-  let balances: Record<AssetClass, number> = { US_STOCK: 0, INTL_STOCK: 0, BONDS: 0, REIT: 0, CASH: 0, REAL_ESTATE: 0 }
+  let balances: Record<AssetClass, number> = { US_STOCK: 0, INTL_STOCK: 0, BONDS: 0, REIT: 0, CASH: 0, REAL_ESTATE: 0, CRYPTO: 0 }
   ASSET_CLASSES.forEach((k) => (balances[k] = initial * (targets[k] || 0)))
   const paramsM = Object.fromEntries(
     ASSET_CLASSES.map((k) => {
@@ -245,7 +245,13 @@ function runPathWithSeries(initial: number, targets: Record<AssetClass, number>,
 
   const total: number[] = new Array(opt.months)
   const byClass: Record<AssetClass, number[]> = {
-    US_STOCK: new Array(opt.months), INTL_STOCK: new Array(opt.months), BONDS: new Array(opt.months), REIT: new Array(opt.months), CASH: new Array(opt.months), REAL_ESTATE: new Array(opt.months)
+    US_STOCK: new Array(opt.months),
+    INTL_STOCK: new Array(opt.months),
+    BONDS: new Array(opt.months),
+    REIT: new Array(opt.months),
+    CASH: new Array(opt.months),
+    REAL_ESTATE: new Array(opt.months),
+    CRYPTO: new Array(opt.months)
   }
 
   for (let m = 0; m < opt.months; m++) {
