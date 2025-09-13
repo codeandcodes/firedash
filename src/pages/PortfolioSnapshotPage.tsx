@@ -1,6 +1,7 @@
 import { useApp } from '@state/AppContext'
 import { computeAllocation, classifyHolding } from '@engine/alloc'
 import { PieChart } from '@components/charts/PieChart'
+import { Card, CardContent, Grid, Typography } from '@mui/material'
 
 export function PortfolioSnapshotPage() {
   const { snapshot } = useApp()
@@ -37,28 +38,19 @@ export function PortfolioSnapshotPage() {
 
   return (
     <section>
-      <h1>Portfolio Snapshot</h1>
-      <p>
-        Timestamp: <code>{snapshot.timestamp}</code>
-      </p>
-      <div className="cards">
-        <div className="card">
-          <div className="card-title">Estimated Net Invested</div>
-          <div className="card-metric">${total.toLocaleString()}</div>
-        </div>
-        <div className="card">
-          <div className="card-title">Accounts</div>
-          <div className="card-metric">{snapshot.accounts.length}</div>
-        </div>
-        <div className="card">
-          <div className="card-title">Real Estate</div>
-          <div className="card-metric">{snapshot.real_estate?.length || 0}</div>
-        </div>
-      </div>
-      <h2>Asset Class Breakdown</h2>
-      <PieChart data={pieData} title={`Allocation (Total $${Math.round(alloc.total).toLocaleString()})`} />
+      <Typography variant="h4" gutterBottom>Portfolio Snapshot</Typography>
+      <Typography sx={{ mb: 2 }} color="text.secondary">Timestamp: <code>{snapshot.timestamp}</code></Typography>
 
-      <h2>Accounts</h2>
+      <Grid container spacing={2} mb={2}>
+        <Grid item xs={12} md={4}><Card><CardContent><Typography variant="overline">Estimated Net Invested</Typography><Typography variant="h5">${total.toLocaleString()}</Typography></CardContent></Card></Grid>
+        <Grid item xs={12} md={4}><Card><CardContent><Typography variant="overline">Accounts</Typography><Typography variant="h5">{snapshot.accounts.length}</Typography></CardContent></Card></Grid>
+        <Grid item xs={12} md={4}><Card><CardContent><Typography variant="overline">Real Estate</Typography><Typography variant="h5">{snapshot.real_estate?.length || 0}</Typography></CardContent></Card></Grid>
+      </Grid>
+
+      <Typography variant="h6" gutterBottom>Asset Class Breakdown</Typography>
+      <Card sx={{ mb: 3 }}><CardContent><PieChart data={pieData} title={`Allocation (Total $${Math.round(alloc.total).toLocaleString()})`} /></CardContent></Card>
+
+      <Typography variant="h6" gutterBottom>Accounts</Typography>
       <table className="table">
         <thead>
           <tr>
@@ -98,42 +90,44 @@ export function PortfolioSnapshotPage() {
         const totalA = slices.reduce((s, x) => s + x.value, 0)
         const data = slices.map((s, i) => ({ ...s, color: palette[i % palette.length] }))
         return (
-          <div key={a.id} className="card" style={{ marginTop: 12 }}>
-            <div className="card-title">{a.name || a.id}</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: 16, alignItems: 'start' }}>
-              <PieChart data={data} title={`$${Math.round(totalA).toLocaleString()}`} />
-              <div>
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>Ticker</th>
-                      <th className="num">Units</th>
-                      <th className="num">Price</th>
-                      <th className="num">Value</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(a.holdings || []).map((h, i) => (
-                      <tr key={i}>
-                        <td>{h.ticker || h.asset_class || '-'}</td>
-                        <td className="num">{h.units}</td>
-                        <td className="num">{fmt(h.price)}</td>
-                        <td className="num">{fmt(h.units * h.price)}</td>
-                      </tr>
-                    ))}
-                    {a.cash_balance ? (
+          <Card key={a.id} sx={{ mt: 2 }}>
+            <CardContent>
+              <Typography variant="subtitle1" gutterBottom>{a.name || a.id}</Typography>
+              <Grid container spacing={2} alignItems="stretch">
+                <Grid item xs={12} md={4}><PieChart data={data} title={`$${Math.round(totalA).toLocaleString()}`} /></Grid>
+                <Grid item xs={12} md={8}>
+                  <table className="table">
+                    <thead>
                       <tr>
-                        <td>Cash</td>
-                        <td className="num">-</td>
-                        <td className="num">-</td>
-                        <td className="num">{fmt(a.cash_balance || 0)}</td>
+                        <th>Ticker</th>
+                        <th className="num">Units</th>
+                        <th className="num">Price</th>
+                        <th className="num">Value</th>
                       </tr>
-                    ) : null}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+                    </thead>
+                    <tbody>
+                      {(a.holdings || []).map((h, i) => (
+                        <tr key={i}>
+                          <td>{h.ticker || h.asset_class || '-'}</td>
+                          <td className="num">{h.units}</td>
+                          <td className="num">{fmt(h.price)}</td>
+                          <td className="num">{fmt(h.units * h.price)}</td>
+                        </tr>
+                      ))}
+                      {a.cash_balance ? (
+                        <tr>
+                          <td>Cash</td>
+                          <td className="num">-</td>
+                          <td className="num">-</td>
+                          <td className="num">{fmt(a.cash_balance || 0)}</td>
+                        </tr>
+                      ) : null}
+                    </tbody>
+                  </table>
+                </Grid>
+              </Grid>
+            </CardContent>
+          </Card>
         )
       })}
     </section>

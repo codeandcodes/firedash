@@ -4,6 +4,8 @@ import { useApp } from '@state/AppContext'
 import type { Snapshot, Account, HoldingLot, RealEstate, Contribution, Expense, SocialSecurity, Assumptions } from '@types/schema'
 import { validateSnapshot } from '@types/schema'
 import { importMonarchFromString } from '@importers/monarch'
+import { Accordion, AccordionDetails, AccordionSummary, Button, Card, CardContent, Grid, TextField, Typography } from '@mui/material'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 
 function nowIso() {
   return new Date().toISOString()
@@ -170,8 +172,8 @@ export function BuilderPage() {
 
   return (
     <section>
-      <h1>Snapshot Builder</h1>
-      <p>Use this form to compose a point-in-time snapshot, then download or load it into the dashboard.</p>
+      <Typography variant="h4" gutterBottom>Snapshot Builder</Typography>
+      <Typography color="text.secondary" sx={{ mb: 2 }}>Compose a point-in-time snapshot, then download or load it into the dashboard.</Typography>
 
       {errors.length > 0 && (
         <div className="errors">
@@ -180,61 +182,45 @@ export function BuilderPage() {
         </div>
       )}
 
-      <div className="cards">
-        <div className="card">
-          <div className="card-title">Import from Monarch JSON</div>
-          <div style={{ display: 'grid', gap: 8 }}>
-            <textarea placeholder="Paste Monarch investments JSON here" value={monarchRaw} onChange={(e) => setMonarchRaw(e.target.value)} style={{ width: '100%', height: 180 }} />
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={importMonarch}>Import Investments</button>
-              {importInfo && <span style={{ color: 'var(--muted)' }}>{importInfo}</span>}
-            </div>
-          </div>
-        </div>
-        <div className="card">
-          <div className="card-title">General</div>
-          <div style={{ display: 'grid', gap: 8 }}>
-            <label>Timestamp <input value={draft.timestamp} onChange={(e) => update('timestamp', e.target.value)} /></label>
-            <label>Currency <input value={draft.currency} onChange={(e) => update('currency', e.target.value as any)} /></label>
-            <label>Current Age <input type="number" value={draft.person?.current_age || ''} onChange={(e) => update('person', { ...(draft.person || {}), current_age: Number(e.target.value) })} /></label>
-          </div>
-        </div>
-        <div className="card">
-          <div className="card-title">Retirement</div>
-          <div style={{ display: 'grid', gap: 8 }}>
-            <label>Retirement Age <input type="number" value={draft.retirement.target_age || ''} onChange={(e) => update('retirement', { ...draft.retirement, target_age: Number(e.target.value) || undefined })} /></label>
-            <label>Target Date <input type="date" value={draft.retirement.target_date || ''} onChange={(e) => update('retirement', { ...draft.retirement, target_date: e.target.value || undefined })} /></label>
-            <label>Expected Spend (mo) <input type="number" value={draft.retirement.expected_spend_monthly} onChange={(e) => update('retirement', { ...draft.retirement, expected_spend_monthly: Number(e.target.value) })} /></label>
-            <label>Withdrawal Strategy
-              <select value={draft.retirement.withdrawal_strategy || 'fixed-real'} onChange={(e) => update('retirement', { ...draft.retirement, withdrawal_strategy: e.target.value as any })}>
-                <option value="fixed-real">Fixed Real</option>
-                <option value="guardrails">Guardrails</option>
-                <option value="vpw">VPW</option>
-                <option value="floor-upside">Floor & Upside</option>
-              </select>
-            </label>
-          </div>
-        </div>
-        <div className="card">
-          <div className="card-title">Assumptions</div>
-          <div style={{ display: 'grid', gap: 8 }}>
-            <label>Inflation Mode
-              <select value={draft.assumptions?.inflation_mode || 'fixed'} onChange={(e) => setAssumptions({ inflation_mode: e.target.value as any })}>
-                <option value="fixed">Fixed</option>
-                <option value="historical_CPI">Historical CPI</option>
-              </select>
-            </label>
-            <label>Inflation % <input type="number" step="0.01" value={(draft.assumptions?.inflation_pct ?? 0.02) * 100} onChange={(e) => setAssumptions({ inflation_pct: Number(e.target.value) / 100 })} /></label>
-            <label>Rebalancing
-              <select value={draft.assumptions?.rebalancing?.frequency || 'annual'} onChange={(e) => setAssumptions({ rebalancing: { ...(draft.assumptions?.rebalancing || {}), frequency: e.target.value as any } })}>
-                <option value="monthly">Monthly</option>
-                <option value="quarterly">Quarterly</option>
-                <option value="annual">Annual</option>
-              </select>
-            </label>
-          </div>
-        </div>
-      </div>
+      <Grid container spacing={2}>
+        <Grid item xs={12}>
+          <Card>
+            <CardContent>
+              <Typography variant="overline">Import from Monarch JSON</Typography>
+              <TextField multiline fullWidth minRows={6} placeholder="Paste Monarch investments JSON here" value={monarchRaw} onChange={(e) => setMonarchRaw(e.target.value)} sx={{ mt: 1 }} />
+              <Grid container spacing={1} mt={1} alignItems="center">
+                <Grid item><Button variant="contained" onClick={importMonarch}>Import Investments</Button></Grid>
+                <Grid item>{importInfo && <Typography color="text.secondary">{importInfo}</Typography>}</Grid>
+              </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} md={6}>
+          <Accordion defaultExpanded>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}><Typography>General</Typography></AccordionSummary>
+            <AccordionDetails>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6}><TextField fullWidth label="Timestamp" value={draft.timestamp} onChange={(e) => update('timestamp', e.target.value)} /></Grid>
+                <Grid item xs={12} md={3}><TextField fullWidth label="Currency" value={draft.currency} onChange={(e) => update('currency', e.target.value as any)} /></Grid>
+                <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Current Age" value={draft.person?.current_age || ''} onChange={(e) => update('person', { ...(draft.person || {}), current_age: Number(e.target.value) })} /></Grid>
+              </Grid>
+            </AccordionDetails>
+          </Accordion>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Accordion defaultExpanded>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}><Typography>Retirement</Typography></AccordionSummary>
+            <AccordionDetails>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={4}><TextField type="number" fullWidth label="Retirement Age" value={draft.retirement.target_age || ''} onChange={(e) => update('retirement', { ...draft.retirement, target_age: Number(e.target.value) || undefined })} /></Grid>
+                <Grid item xs={12} md={4}><TextField type="date" fullWidth label="Target Date" InputLabelProps={{ shrink: true }} value={draft.retirement.target_date || ''} onChange={(e) => update('retirement', { ...draft.retirement, target_date: e.target.value || undefined })} /></Grid>
+                <Grid item xs={12} md={4}><TextField type="number" fullWidth label="Expected Spend (mo)" value={draft.retirement.expected_spend_monthly} onChange={(e) => update('retirement', { ...draft.retirement, expected_spend_monthly: Number(e.target.value) })} /></Grid>
+              </Grid>
+            </AccordionDetails>
+          </Accordion>
+        </Grid>
+      </Grid>
 
       <h2>Accounts</h2>
       <button onClick={addAccount}>Add Account</button>
@@ -343,13 +329,13 @@ export function BuilderPage() {
         </div>
       ))}
 
-      <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-        <button onClick={() => setDraft({ ...emptySnapshot, timestamp: nowIso() })}>Reset</button>
-        {snapshot && <button onClick={() => setDraft(snapshot)}>Load From Current</button>}
-        <button onClick={prefillSample}>Prefill Sample</button>
-        <button onClick={loadIntoApp}>Load Into App</button>
-        <button onClick={download}>Download JSON</button>
-      </div>
+      <Grid container spacing={1} sx={{ mt: 2 }}>
+        <Grid item><Button onClick={() => setDraft({ ...emptySnapshot, timestamp: nowIso() })}>Reset</Button></Grid>
+        {snapshot && <Grid item><Button onClick={() => setDraft(snapshot)}>Load From Current</Button></Grid>}
+        <Grid item><Button onClick={prefillSample}>Prefill Sample</Button></Grid>
+        <Grid item><Button variant="contained" onClick={loadIntoApp}>Load Into App</Button></Grid>
+        <Grid item><Button variant="outlined" onClick={download}>Download JSON</Button></Grid>
+      </Grid>
 
       <h2 style={{ marginTop: 16 }}>Preview JSON</h2>
       <pre className="code-block" style={{ maxHeight: 320, overflow: 'auto' }}>{pretty}</pre>
