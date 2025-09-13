@@ -28,7 +28,7 @@ function deterministicReturn(muM: number): number {
 }
 
 type Balances = Record<AssetClass, number>
-const ASSET_CLASSES: AssetClass[] = ['US_STOCK', 'INTL_STOCK', 'BONDS', 'REIT', 'CASH', 'REAL_ESTATE']
+const ASSET_CLASSES: AssetClass[] = ['US_STOCK', 'INTL_STOCK', 'BONDS', 'REIT', 'CASH', 'REAL_ESTATE', 'CRYPTO']
 
 function rebalance(balances: Balances, targets: Record<AssetClass, number>) {
   const total = ASSET_CLASSES.reduce((s, k) => s + balances[k], 0)

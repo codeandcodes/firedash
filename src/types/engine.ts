@@ -1,4 +1,4 @@
-export type AssetClass = 'US_STOCK' | 'INTL_STOCK' | 'BONDS' | 'REIT' | 'CASH' | 'REAL_ESTATE'
+export type AssetClass = 'US_STOCK' | 'INTL_STOCK' | 'BONDS' | 'REIT' | 'CASH' | 'REAL_ESTATE' | 'CRYPTO'
 
 export interface ReturnParams {
   mu: number // annualized arithmetic mean return (approx)

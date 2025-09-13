@@ -14,12 +14,14 @@ export function PortfolioSnapshotPage() {
     )
   }
 
+  const fmt = (n: number) => `$${Math.round(n).toLocaleString()}`
+
   const totalCash = snapshot.accounts.reduce((s, a) => s + (a.cash_balance || 0), 0)
   const totalHoldings = snapshot.accounts.reduce((s, a) =>
     s + (a.holdings || []).reduce((h, lot) => h + lot.units * lot.price, 0), 0)
   const total = totalCash + totalHoldings
   const alloc = computeAllocation(snapshot)
-  const COLORS: Record<string, string> = { US_STOCK: '#7aa2f7', INTL_STOCK: '#91d7e3', BONDS: '#a6da95', REIT: '#f5a97f', CASH: '#eed49f', REAL_ESTATE: '#c6a0f6' }
+  const COLORS: Record<string, string> = { US_STOCK: '#7aa2f7', INTL_STOCK: '#91d7e3', BONDS: '#a6da95', REIT: '#f5a97f', CASH: '#eed49f', REAL_ESTATE: '#c6a0f6', CRYPTO: '#f28fad' }
   // Use absolute dollars for global pie to avoid tiny slices rounding away
   const globalSums: Record<string, number> = { US_STOCK: 0, INTL_STOCK: 0, BONDS: 0, REIT: 0, CASH: 0, REAL_ESTATE: 0 }
   for (const a of snapshot.accounts) {
@@ -62,7 +64,7 @@ export function PortfolioSnapshotPage() {
           <tr>
             <th>Name</th>
             <th>Type</th>
-            <th>Value</th>
+            <th className="num">Value</th>
           </tr>
         </thead>
         <tbody>
@@ -72,7 +74,7 @@ export function PortfolioSnapshotPage() {
               <tr key={a.id}>
                 <td>{a.name || a.id}</td>
                 <td>{a.type}</td>
-                <td>${val.toLocaleString()}</td>
+                <td className="num">{fmt(val)}</td>
               </tr>
             )
           })}
@@ -105,26 +107,26 @@ export function PortfolioSnapshotPage() {
                   <thead>
                     <tr>
                       <th>Ticker</th>
-                      <th>Units</th>
-                      <th>Price</th>
-                      <th>Value</th>
+                      <th className="num">Units</th>
+                      <th className="num">Price</th>
+                      <th className="num">Value</th>
                     </tr>
                   </thead>
                   <tbody>
                     {(a.holdings || []).map((h, i) => (
                       <tr key={i}>
                         <td>{h.ticker || h.asset_class || '-'}</td>
-                        <td>{h.units}</td>
-                        <td>${h.price}</td>
-                        <td>${(h.units * h.price).toLocaleString()}</td>
+                        <td className="num">{h.units}</td>
+                        <td className="num">{fmt(h.price)}</td>
+                        <td className="num">{fmt(h.units * h.price)}</td>
                       </tr>
                     ))}
                     {a.cash_balance ? (
                       <tr>
                         <td>Cash</td>
-                        <td>-</td>
-                        <td>-</td>
-                        <td>${(a.cash_balance || 0).toLocaleString()}</td>
+                        <td className="num">-</td>
+                        <td className="num">-</td>
+                        <td className="num">{fmt(a.cash_balance || 0)}</td>
                       </tr>
                     ) : null}
                   </tbody>

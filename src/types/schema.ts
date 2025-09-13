@@ -9,6 +9,7 @@ export type AccountType =
   | 'roth'
   | 'hsa'
   | 'cash'
+  | 'crypto'
 
 export interface HoldingLot {
   ticker?: string

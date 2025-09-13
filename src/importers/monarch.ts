@@ -4,6 +4,7 @@ type AnyObj = Record<string, any>
 
 function mapAccountType(monarchType?: string, monarchSubtype?: string): Account['type'] {
   const t = (monarchSubtype || monarchType || '').toLowerCase()
+  if (t.includes('crypto')) return 'crypto'
   if (t.includes('roth')) return 'roth'
   if (t.includes('401k')) return '401k'
   if (t.includes('ira')) return 'ira'
@@ -73,20 +74,21 @@ export function importMonarchInvestments(json: AnyObj): ImportResult {
     const holding0 = node.holdings?.[0]
     const security = node.security || holding0
     const account = holding0?.account
-    const accountId: string | undefined = account?.id
+    let accountId: string | undefined = account?.id
     if (!accountId) continue
-
-    const accType = mapAccountType(account?.subtype?.name || account?.type?.name, account?.subtype?.display)
-    const accName: string = account?.displayName || accountId
-    const existing = accountMap.get(accountId)
-    if (!existing) {
-      accountMap.set(accountId, {
-        id: accountId,
-        type: accType,
-        name: accName,
-        holdings: [],
-        cash_balance: 0
-      })
+    const isCrypto =
+      typeof (security?.ticker || holding0?.ticker) === 'string' && /-USD$/.test((security?.ticker || holding0?.ticker).toUpperCase())
+    const accTypeRaw = mapAccountType(account?.subtype?.name || account?.type?.name, account?.subtype?.display)
+    let accType = accTypeRaw
+    let accName: string = account?.displayName || accountId
+    // If Monarch grouped crypto under brokerage, split into a synthetic crypto account
+    if (isCrypto && accTypeRaw !== 'crypto') {
+      accountId = `${accountId}-crypto`
+      accType = 'crypto'
+      accName = `${(account?.displayName || 'Account')} (Crypto)`
+    }
+    if (!accountMap.has(accountId)) {
+      accountMap.set(accountId, { id: accountId, type: accType, name: accName, holdings: [], cash_balance: 0 })
     }
 
     const units = safeNumber(node.quantity) ?? safeNumber(holding0?.quantity) ?? 0
