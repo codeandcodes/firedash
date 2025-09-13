@@ -16,11 +16,11 @@ export function ResultsPage() {
       {snapshot && (
         <div className="cards">
           <div className="card">
-            <div className="card-title">Backtest (placeholder)</div>
-            <div className="card-metric">{det?.summary || '-'}</div>
+            <div className="card-title">Deterministic</div>
+            <div className="card-metric">{det ? `${det.summary}. Terminal $${det.terminal.toLocaleString()}` : '-'}</div>
           </div>
           <div className="card">
-            <div className="card-title">Monte Carlo (placeholder)</div>
+            <div className="card-title">Monte Carlo</div>
             <div className="card-metric">{mc?.summary || '-'}</div>
           </div>
         </div>
@@ -28,4 +28,3 @@ export function ResultsPage() {
     </section>
   )
 }
-
