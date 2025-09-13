@@ -2,8 +2,9 @@ import type { Account, HoldingLot } from '@types/schema'
 
 type AnyObj = Record<string, any>
 
-function mapAccountType(monarchType?: string, monarchSubtype?: string): Account['type'] {
+function mapAccountType(monarchType?: string, monarchSubtype?: string, institutionName?: string | null): Account['type'] {
   const t = (monarchSubtype || monarchType || '').toLowerCase()
+  if (!institutionName && (!monarchType && !monarchSubtype)) return 'other'
   if (t.includes('crypto')) return 'crypto'
   if (t.includes('roth')) return 'roth'
   if (t.includes('401k')) return '401k'
@@ -71,41 +72,73 @@ export function importMonarchInvestments(json: AnyObj): ImportResult {
     const node = e?.node ?? e
     if (!node) continue
     positions++
-    const holding0 = node.holdings?.[0]
-    const security = node.security || holding0
-    const account = holding0?.account
-    let accountId: string | undefined = account?.id
-    if (!accountId) continue
-    const isCrypto =
-      typeof (security?.ticker || holding0?.ticker) === 'string' && /-USD$/.test((security?.ticker || holding0?.ticker).toUpperCase())
-    const accTypeRaw = mapAccountType(account?.subtype?.name || account?.type?.name, account?.subtype?.display)
-    let accType = accTypeRaw
-    let accName: string = account?.displayName || accountId
-    // If Monarch grouped crypto under brokerage, split into a synthetic crypto account
-    if (isCrypto && accTypeRaw !== 'crypto') {
-      accountId = `${accountId}-crypto`
-      accType = 'crypto'
-      accName = `${(account?.displayName || 'Account')} (Crypto)`
-    }
-    if (!accountMap.has(accountId)) {
-      accountMap.set(accountId, { id: accountId, type: accType, name: accName, holdings: [], cash_balance: 0 })
-    }
-
-    const units = safeNumber(node.quantity) ?? safeNumber(holding0?.quantity) ?? 0
-    const price = safeNumber(security?.currentPrice) ?? safeNumber(holding0?.closingPrice) ?? (safeNumber(node.totalValue) && units ? (node.totalValue as number) / units : 0)
+    const holdingsArr = Array.isArray(node.holdings) ? node.holdings : []
+    const security = node.security
     const basisTotal = safeNumber(node.basis)
-    const cb = basisTotal && units ? basisTotal / units : undefined
+    const nodeTotalValue = safeNumber(node.totalValue)
+    const sumValues = holdingsArr.reduce((s: number, h: any) => s + (safeNumber(h.value) || 0), 0)
 
-    const lot: HoldingLot = {
-      ticker: security?.ticker || holding0?.ticker || undefined,
-      units,
-      price: price || 0,
-      cost_basis: cb
+    for (const hh of holdingsArr) {
+      const account = hh?.account
+      const instName: string | null = account?.institution?.name || null
+      const isInstitutionless = !instName
+
+      // Determine target account id, type, and name
+      let accountId: string
+      let accType: Account['type']
+      let accName: string
+
+      if (isInstitutionless) {
+        // Group into an 'other' synthetic account keyed by displayName to avoid mixing unrelated holdings
+        const label = (account?.displayName || 'Unlinked') as string
+        accountId = `other:${label}`
+        accType = 'other'
+        accName = `${label} (Other)`
+      } else {
+        // Use the real account id and map the type
+        const baseId: string | undefined = account?.id
+        if (!baseId) continue
+        accountId = baseId
+        const accTypeRaw = mapAccountType(account?.type?.name, account?.subtype?.name || account?.subtype?.display, instName)
+        accType = accTypeRaw
+        accName = account?.displayName || accountId
+
+        // If crypto position was grouped under non-crypto account, split into a synthetic crypto view
+        const isCryptoType = (hh?.type || '').toLowerCase() === 'cryptocurrency'
+        const tick = (hh?.ticker || security?.ticker || '').toUpperCase()
+        const isCryptoTicker = /-USD$/.test(tick) || /^(BTC|ETH|SOL|ADA|DOGE|MATIC)$/.test(tick)
+        if ((isCryptoType || isCryptoTicker) && accTypeRaw !== 'crypto') {
+          accountId = `${accountId}-crypto`
+          accType = 'crypto'
+          accName = `${(account?.displayName || 'Account')} (Crypto)`
+        }
+      }
+
+      if (!accountMap.has(accountId)) {
+        accountMap.set(accountId, { id: accountId, type: accType, name: accName, holdings: [], cash_balance: 0 })
+      }
+
+      // Position values and proportional basis
+      const units = safeNumber(hh.quantity) ?? 0
+      // Prefer security.currentPrice if its timestamp is newer than holding's closingPriceUpdatedAt
+      const hUpd = Date.parse(hh?.closingPriceUpdatedAt || '')
+      const sUpd = Date.parse(security?.currentPriceUpdatedAt || '')
+      const hPrice = safeNumber(hh.closingPrice)
+      const sPrice = safeNumber(security?.currentPrice)
+      const price = (isFinite(sUpd) && (!isFinite(hUpd) || sUpd > hUpd) ? sPrice : hPrice) ?? sPrice ?? hPrice ?? 0
+      const value = safeNumber(hh.value) ?? (units && price ? units * price : 0)
+      let cost_basis: number | undefined
+      if (basisTotal && (nodeTotalValue || sumValues) && units) {
+        const denom = nodeTotalValue || sumValues
+        const share = (value && denom ? (value / denom) : 0) * (basisTotal as number)
+        cost_basis = share / units
+      }
+
+      const lot: HoldingLot = { ticker: hh.ticker || security?.ticker || undefined, units, price: price || 0, cost_basis }
+      accountMap.get(accountId)!.holdings!.push(lot)
     }
 
-    accountMap.get(accountId)!.holdings!.push(lot)
-
-    const sync = node.lastSyncedAt || security?.currentPriceUpdatedAt || holding0?.closingPriceUpdatedAt
+    const sync = node.lastSyncedAt || security?.currentPriceUpdatedAt || holdingsArr[0]?.closingPriceUpdatedAt
     if (typeof sync === 'string') {
       if (!latestSync || new Date(sync) > new Date(latestSync)) latestSync = sync
     }
