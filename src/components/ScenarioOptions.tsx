@@ -47,7 +47,7 @@ export const ScenarioOptions: React.FC = () => {
           <Grid item xs={12} md={3}>
             <FormControl fullWidth>
               <InputLabel id="mc-label">MC Mode</InputLabel>
-              <Select labelId="mc-label" label="MC Mode" value={(simOptions as any).mcMode || 'regime'}
+              <Select labelId="mc-label" label="MC Mode" value={simOptions.mcMode}
                       onChange={(e) => setSimOptions({ mcMode: e.target.value as any })}>
                 <MenuItem value="bootstrap">Bootstrap (historical)</MenuItem>
                 <MenuItem value="regime">Regime</MenuItem>

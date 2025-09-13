@@ -5,7 +5,7 @@ import type { SimOptions } from '@types/engine'
 interface AppState {
   snapshot: Snapshot | null
   setSnapshot: (s: Snapshot | null) => void
-  simOptions: Required<Pick<SimOptions, 'years' | 'paths' | 'rebalFreq' | 'inflation'>>
+  simOptions: Required<Pick<SimOptions, 'years' | 'paths' | 'rebalFreq' | 'inflation'>> & { mcMode: NonNullable<SimOptions['mcMode']> }
   setSimOptions: (s: Partial<SimOptions>) => void
 }
 
@@ -13,8 +13,8 @@ const Ctx = createContext<AppState | undefined>(undefined)
 
 export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
-  const [simOptionsState, setSimOptionsState] = useState<Required<Pick<SimOptions, 'years' | 'paths' | 'rebalFreq' | 'inflation'>>>(
-    { years: 40, paths: 1000, rebalFreq: 'annual', inflation: 0.02 }
+  const [simOptionsState, setSimOptionsState] = useState<Required<Pick<SimOptions, 'years' | 'paths' | 'rebalFreq' | 'inflation'>> & { mcMode: NonNullable<SimOptions['mcMode']> }>(
+    { years: 40, paths: 1000, rebalFreq: 'annual', inflation: 0.02, mcMode: 'bootstrap' }
   )
 
   const ctxVal = useMemo(() => ({
@@ -25,7 +25,8 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
       years: s.years ?? prev.years,
       paths: s.paths ?? prev.paths,
       rebalFreq: s.rebalFreq ?? prev.rebalFreq,
-      inflation: s.inflation ?? prev.inflation
+      inflation: s.inflation ?? prev.inflation,
+      mcMode: (s.mcMode as any) ?? prev.mcMode
     }))
   }), [snapshot, simOptionsState])
 

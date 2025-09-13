@@ -1,5 +1,10 @@
 import type { HistoricalDataset } from '@types/historical'
 import type { AssetClass } from '@types/engine'
+// Import at build time so it's available in the browser bundle
+// If you need to swap data, regenerate this file or add an upload path later.
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import datasetJson from '../../data/historical_returns.json'
 
 export interface BootstrapOptions {
   blockMonths: number
@@ -7,14 +12,8 @@ export interface BootstrapOptions {
 }
 
 export function tryLoadHistorical(): HistoricalDataset | null {
-  try {
-    // Vite will bundle JSON if imported statically, but we want runtime optional load
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const data: HistoricalDataset = require('../../data/historical_returns.json')
-    if (data && Array.isArray(data.rows)) return data
-  } catch (_e) {
-    // ignore missing file
-  }
+  const data = datasetJson as HistoricalDataset
+  if (data && Array.isArray(data.rows)) return data
   return null
 }
 
@@ -42,10 +41,30 @@ export function createBootstrapSampler(dataset: HistoricalDataset, months: numbe
     for (let i = 0; i < len; i++) out.push(arr[(start + i) % arr.length])
     return out
   }
+  // Detect if dataset is annual expanded to monthly (flat within each 12-month block)
+  function isAnnualExpanded(): boolean {
+    const checkLen = Math.min(N, 12 * 10)
+    // Compare monthly returns within each 12-size window for US_STOCK
+    const arr = byAsset['US_STOCK']
+    if (!arr || arr.length < 24) return false
+    for (let i = 0; i + 12 <= checkLen; i += 12) {
+      const slice = arr.slice(i, i + 12)
+      const first = slice[0]
+      if (!slice.every((v) => v === first)) return false
+    }
+    return true
+  }
+
+  const annualMode = isAnnualExpanded()
+  if (annualMode) {
+    // Sample in year-aligned blocks; add more noise to restore monthly variance
+    block = 12
+  }
   // Assemble bootstrapped path
   let remaining = months
   while (remaining > 0) {
-    const start = Math.floor(Math.random() * N)
+    let start = Math.floor(Math.random() * N)
+    if (annualMode) start = Math.floor(start / 12) * 12 // align to year boundary
     const take = Math.min(block, remaining)
     for (const a of assets) {
       series[a].push(...pick(start, take, byAsset[a]))
@@ -60,6 +79,8 @@ export function createBootstrapSampler(dataset: HistoricalDataset, months: numbe
         const base = series[a][idx]
         let sigma = opts.jitterSigma
         if (typeof globalAny.__mcNoise === 'number') sigma = Number(globalAny.__mcNoise)
+        // If annual-expanded, add higher monthly noise to restore realistic dispersion
+        if (annualMode && (sigma ?? 0) < 0.01) sigma = 0.012
         const jitter = sigma > 0 ? sigma * randn() : 0
         ret[a] = base + jitter
       }

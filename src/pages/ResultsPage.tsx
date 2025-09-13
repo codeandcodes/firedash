@@ -22,13 +22,15 @@ export function ResultsPage() {
     paths: simOptions.paths,
     years: simOptions.years,
     inflation: simOptions.inflation,
-    rebalFreq: simOptions.rebalFreq
+    rebalFreq: simOptions.rebalFreq,
+    mcMode: simOptions.mcMode
   }) : null), [snapshot, simOptions])
   const series = useMemo(() => (snapshot ? simulateSeries(snapshot, {
     paths: Math.min(simOptions.paths, 1000),
     years: simOptions.years,
     inflation: simOptions.inflation,
-    rebalFreq: simOptions.rebalFreq
+    rebalFreq: simOptions.rebalFreq,
+    mcMode: simOptions.mcMode
   }) : null), [snapshot, simOptions])
   const startYear = useMemo(() => snapshot ? new Date(snapshot.timestamp).getFullYear() : undefined, [snapshot])
   const retAt = useMemo(() => {

@@ -323,16 +323,16 @@ function createRegimeSampler() {
   }
   const params: Record<Regime, RegimeParams> = {
     bull: {
-      mu: { US_STOCK: 0.009, INTL_STOCK: 0.008, BONDS: 0.002, REIT: 0.008, CASH: 0.001, REAL_ESTATE: 0.003, CRYPTO: 0.03 },
-      sigma: { US_STOCK: 0.04, INTL_STOCK: 0.05, BONDS: 0.015, REIT: 0.06, CASH: 0.002, REAL_ESTATE: 0.03, CRYPTO: 0.20 }
+      mu: { US_STOCK: 0.009, INTL_STOCK: 0.008, BONDS: 0.002, REIT: 0.008, CASH: 0.001, REAL_ESTATE: 0.003, CRYPTO: 0.03, GOLD: 0.002 },
+      sigma: { US_STOCK: 0.04, INTL_STOCK: 0.05, BONDS: 0.015, REIT: 0.06, CASH: 0.002, REAL_ESTATE: 0.03, CRYPTO: 0.20, GOLD: 0.04 }
     },
     bear: {
-      mu: { US_STOCK: -0.015, INTL_STOCK: -0.017, BONDS: 0.004, REIT: -0.013, CASH: 0.001, REAL_ESTATE: -0.005, CRYPTO: -0.06 },
-      sigma: { US_STOCK: 0.07, INTL_STOCK: 0.08, BONDS: 0.02, REIT: 0.08, CASH: 0.002, REAL_ESTATE: 0.05, CRYPTO: 0.30 }
+      mu: { US_STOCK: -0.015, INTL_STOCK: -0.017, BONDS: 0.004, REIT: -0.013, CASH: 0.001, REAL_ESTATE: -0.005, CRYPTO: -0.06, GOLD: 0.01 },
+      sigma: { US_STOCK: 0.07, INTL_STOCK: 0.08, BONDS: 0.02, REIT: 0.08, CASH: 0.002, REAL_ESTATE: 0.05, CRYPTO: 0.30, GOLD: 0.06 }
     },
     stagnation: {
-      mu: { US_STOCK: 0.0, INTL_STOCK: 0.0, BONDS: 0.001, REIT: 0.0, CASH: 0.001, REAL_ESTATE: 0.001, CRYPTO: 0.0 },
-      sigma: { US_STOCK: 0.03, INTL_STOCK: 0.035, BONDS: 0.012, REIT: 0.04, CASH: 0.002, REAL_ESTATE: 0.02, CRYPTO: 0.20 }
+      mu: { US_STOCK: 0.0, INTL_STOCK: 0.0, BONDS: 0.001, REIT: 0.0, CASH: 0.001, REAL_ESTATE: 0.001, CRYPTO: 0.0, GOLD: 0.002 },
+      sigma: { US_STOCK: 0.03, INTL_STOCK: 0.035, BONDS: 0.012, REIT: 0.04, CASH: 0.002, REAL_ESTATE: 0.02, CRYPTO: 0.20, GOLD: 0.03 }
     }
   }
   function stepState() {
@@ -351,7 +351,9 @@ function createRegimeSampler() {
       const p = params[state]
       const ret: Record<AssetClass, number> = { US_STOCK: 0, INTL_STOCK: 0, BONDS: 0, REIT: 0, CASH: 0, REAL_ESTATE: 0, CRYPTO: 0 }
       ASSET_CLASSES.forEach((k) => {
-        const r = p.mu[k] + p.sigma[k] * randn()
+        const mu = (p.mu as any)[k] ?? 0
+        const sig = (p.sigma as any)[k] ?? 0
+        const r = mu + sig * randn()
         ret[k] = r
       })
       return ret
