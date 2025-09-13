@@ -2,18 +2,31 @@ import { useApp } from '@state/AppContext'
 import { runDeterministicBacktest } from '@engine/backtest'
 import { runMonteCarlo } from '@engine/monteCarlo'
 import { useMemo } from 'react'
+import { useApp } from '@state/AppContext'
+import { ScenarioOptions } from '@components/ScenarioOptions'
 
 export function ResultsPage() {
-  const { snapshot } = useApp()
+  const { snapshot, simOptions } = useApp()
 
-  const det = useMemo(() => (snapshot ? runDeterministicBacktest(snapshot) : null), [snapshot])
-  const mc = useMemo(() => (snapshot ? runMonteCarlo(snapshot, { paths: 1000 }) : null), [snapshot])
+  const det = useMemo(() => (snapshot ? runDeterministicBacktest(snapshot, {
+    years: simOptions.years,
+    inflation: simOptions.inflation,
+    rebalFreq: simOptions.rebalFreq
+  }) : null), [snapshot, simOptions])
+  const mc = useMemo(() => (snapshot ? runMonteCarlo(snapshot, {
+    paths: simOptions.paths,
+    years: simOptions.years,
+    inflation: simOptions.inflation,
+    rebalFreq: simOptions.rebalFreq
+  }) : null), [snapshot, simOptions])
 
   return (
     <section>
       <h1>Results</h1>
       {!snapshot && <p>No snapshot loaded.</p>}
       {snapshot && (
+        <>
+        <ScenarioOptions />
         <div className="cards">
           <div className="card">
             <div className="card-title">Deterministic</div>
@@ -24,6 +37,7 @@ export function ResultsPage() {
             <div className="card-metric">{mc?.summary || '-'}</div>
           </div>
         </div>
+        </>
       )}
     </section>
   )

@@ -27,11 +27,12 @@ function deterministicReturn(muM: number): number {
 }
 
 type Balances = Record<AssetClass, number>
+const ASSET_CLASSES: AssetClass[] = ['US_STOCK', 'INTL_STOCK', 'BONDS', 'REIT', 'CASH']
 
-function rebalance(bal: Balances, targets: Record<AssetClass, number>) {
-  const total = Object.values(bal).reduce((s, x) => s + x, 0)
+function rebalance(balances: Balances, targets: Record<AssetClass, number>) {
+  const total = ASSET_CLASSES.reduce((s, k) => s + balances[k], 0)
   if (total <= 0) return
-  (Object.keys(bal) as AssetClass[]).forEach((k) => (bal[k] = targets[k] * total))
+  ASSET_CLASSES.forEach((k) => (balances[k] = (targets[k] || 0) * total))
 }
 
 interface LoopOptions {
@@ -45,12 +46,12 @@ interface LoopOptions {
 }
 
 function runPath(initial: number, targets: Record<AssetClass, number>, opt: LoopOptions): PathStats {
-  let bal: Balances = { US_STOCK: 0, INTL_STOCK: 0, BONDS: 0, REIT: 0, CASH: 0 }
+  let balances: Balances = { US_STOCK: 0, INTL_STOCK: 0, BONDS: 0, REIT: 0, CASH: 0 }
   // seed by targets
-  (Object.keys(bal) as AssetClass[]).forEach((k) => (bal[k] = initial * targets[k]))
+  ASSET_CLASSES.forEach((k) => (balances[k] = initial * (targets[k] || 0)))
 
   const paramsM = Object.fromEntries(
-    (Object.keys(bal) as AssetClass[]).map((k) => {
+    ASSET_CLASSES.map((k) => {
       const p = DEFAULT_RETURNS[k]
       const { muM, sigmaM } = monthlyParams(p.mu, p.sigma)
       return [k, { muM, sigmaM }]
@@ -65,34 +66,34 @@ function runPath(initial: number, targets: Record<AssetClass, number>, opt: Loop
 
   for (let m = 0; m < opt.months; m++) {
     // apply returns
-    (Object.keys(bal) as AssetClass[]).forEach((k) => {
+    ASSET_CLASSES.forEach((k) => {
       const p = paramsM[k]
       const r = opt.deterministic ? deterministicReturn(p.muM) : sampleReturn(p.muM, p.sigmaM)
-      bal[k] *= 1 + r
+      balances[k] *= 1 + r
     })
 
     // scheduled cash flows
     const cf = opt.cashflows.get(m) || 0
-    bal.CASH += cf
+    balances.CASH += cf
 
     // real spend and SS (inflation-adjusted)
     const spendNominal = spendReal * Math.exp(inflM * m)
     const ssNominal = ssReal * Math.exp(inflM * m)
-    bal.CASH += ssNominal - spendNominal
+    balances.CASH += ssNominal - spendNominal
 
     // rebalance
     if (opt.rebalEvery > 0 && (m + 1) % opt.rebalEvery === 0) {
-      rebalance(bal, targets)
+      rebalance(balances, targets)
     }
 
-    const total = Object.values(bal).reduce((s, x) => s + x, 0)
+    const total = ASSET_CLASSES.reduce((s, k) => s + balances[k], 0)
     minDrawdown = Math.min(minDrawdown, total)
     if (total <= 0) {
       return { success: false, terminal: 0, minDrawdown }
     }
   }
 
-  const terminal = Object.values(bal).reduce((s, x) => s + x, 0)
+  const terminal = ASSET_CLASSES.reduce((s, k) => s + balances[k], 0)
   return { success: true, terminal, minDrawdown }
 }
 
@@ -166,4 +167,3 @@ export function simulateDeterministic(snapshot: Snapshot, options: SimOptions = 
   const res = runPath(total, weights, loopOpt)
   return { terminal: res.terminal }
 }
-
