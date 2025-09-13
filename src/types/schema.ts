@@ -76,6 +76,10 @@ export interface SocialSecurity {
   COLA?: number
 }
 
+export interface PersonProfile {
+  current_age?: number
+}
+
 export interface Assumptions {
   inflation_mode?: 'fixed' | 'historical_CPI'
   inflation_pct?: number
@@ -98,6 +102,7 @@ export interface Snapshot {
   retirement: RetirementPlan
   social_security?: SocialSecurity[]
   assumptions?: Assumptions
+  person?: PersonProfile
 }
 
 export function validateSnapshot(data: any): { valid: boolean; errors?: string[] } {
@@ -136,4 +141,3 @@ export function validateSnapshot(data: any): { valid: boolean; errors?: string[]
 
   return { valid: errors.length === 0, errors: errors.length ? errors : undefined }
 }
-

@@ -30,6 +30,7 @@ export function ResultsPage() {
     inflation: simOptions.inflation,
     rebalFreq: simOptions.rebalFreq
   }) : null), [snapshot, simOptions])
+  const startYear = useMemo(() => snapshot ? new Date(snapshot.timestamp).getFullYear() : undefined, [snapshot])
 
   return (
     <section>
@@ -51,13 +52,13 @@ export function ResultsPage() {
         {series && (
           <>
             <h2>Portfolio Balance — Fan Chart</h2>
-            <FanChart p10={series.mc.p10} p25={series.mc.p25} p50={series.mc.p50} p75={series.mc.p75} p90={series.mc.p90} years={simOptions.years} title="Monte Carlo Percentiles" />
+            <FanChart p10={series.mc.p10} p25={series.mc.p25} p50={series.mc.p50} p75={series.mc.p75} p90={series.mc.p90} years={simOptions.years} startYear={startYear} title="Monte Carlo Percentiles" />
             <h2>Deterministic Balance</h2>
-            <LineChart series={series.det.total} years={simOptions.years} label="Deterministic Balance" />
+            <LineChart series={series.det.total} years={simOptions.years} startYear={startYear} label="Deterministic Balance" />
             <h2>Deterministic Asset Breakdown</h2>
-            <StackedArea byClass={series.det.byClass} years={simOptions.years} />
+            <StackedArea byClass={series.det.byClass} years={simOptions.years} startYear={startYear} />
             <h2>Yearly Percentiles</h2>
-            <YearlyPercentileTable months={series.months} p10={series.mc.p10} p25={series.mc.p25} p50={series.mc.p50} p75={series.mc.p75} p90={series.mc.p90} />
+            <YearlyPercentileTable months={series.months} p10={series.mc.p10} p25={series.mc.p25} p50={series.mc.p50} p75={series.mc.p75} p90={series.mc.p90} startYear={startYear} />
           </>
         )}
         </>

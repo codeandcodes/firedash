@@ -9,7 +9,7 @@ const COLORS: Record<AssetClass, string> = {
   CASH: '#eed49f'
 }
 
-export const StackedArea: React.FC<{ byClass: Record<AssetClass, number[]>; width?: number; height?: number; years?: number }> = ({ byClass, width = 800, height = 300, years }) => {
+export const StackedArea: React.FC<{ byClass: Record<AssetClass, number[]>; width?: number; height?: number; years?: number; startYear?: number }> = ({ byClass, width = 800, height = 300, years, startYear }) => {
   const keys = Object.keys(byClass) as AssetClass[]
   const months = byClass[keys[0]].length
   const totals = new Array<number>(months).fill(0)
@@ -61,6 +61,14 @@ export const StackedArea: React.FC<{ byClass: Record<AssetClass, number[]>; widt
         {new Array(Math.max(1, Math.round(months/12))+1).fill(0).map((_, i) => {
           const xi = Math.min(months-1, Math.round((i/Math.max(1, Math.round(months/12))) * (months-1)))
           return <line key={i} y1={padTop} y2={H - padBottom} x1={x(xi)} x2={x(xi)} />
+        })}
+      </g>
+      {/* X-axis labels */}
+      <g fill="#9aa4b2" fontSize={10}>
+        {new Array(Math.max(1, Math.round(months/12))+1).fill(0).map((_, i) => {
+          const xi = Math.min(months-1, Math.round((i/Math.max(1, Math.round(months/12))) * (months-1)))
+          const label = startYear ? String(startYear + i) : String(i)
+          return <text key={i} x={x(xi)} y={H - 6} textAnchor="middle">{label}</text>
         })}
       </g>
       <g>{layers}</g>

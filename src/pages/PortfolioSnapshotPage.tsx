@@ -1,4 +1,6 @@
 import { useApp } from '@state/AppContext'
+import { computeAllocation } from '@engine/alloc'
+import { PieChart } from '@components/charts/PieChart'
 
 export function PortfolioSnapshotPage() {
   const { snapshot } = useApp()
@@ -16,6 +18,9 @@ export function PortfolioSnapshotPage() {
   const totalHoldings = snapshot.accounts.reduce((s, a) =>
     s + (a.holdings || []).reduce((h, lot) => h + lot.units * lot.price, 0), 0)
   const total = totalCash + totalHoldings
+  const alloc = computeAllocation(snapshot)
+  const COLORS: Record<string, string> = { US_STOCK: '#7aa2f7', INTL_STOCK: '#91d7e3', BONDS: '#a6da95', REIT: '#f5a97f', CASH: '#eed49f' }
+  const pieData = Object.entries(alloc.weights).map(([k, w]) => ({ label: k, value: w, color: COLORS[k] || '#888' }))
 
   return (
     <section>
@@ -37,6 +42,9 @@ export function PortfolioSnapshotPage() {
           <div className="card-metric">{snapshot.real_estate?.length || 0}</div>
         </div>
       </div>
+      <h2>Asset Class Breakdown</h2>
+      <PieChart data={pieData} title={`Allocation (Total $${Math.round(alloc.total).toLocaleString()})`} />
+
       <h2>Accounts</h2>
       <table className="table">
         <thead>
@@ -62,4 +70,3 @@ export function PortfolioSnapshotPage() {
     </section>
   )
 }
-

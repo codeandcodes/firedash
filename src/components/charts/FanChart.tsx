@@ -14,9 +14,10 @@ export interface FanChartProps {
   height?: number
   years?: number
   title?: string
+  startYear?: number
 }
 
-export const FanChart: React.FC<FanChartProps> = ({ p10, p25, p50, p75, p90, width = 800, height = 300, years, title }) => {
+export const FanChart: React.FC<FanChartProps> = ({ p10, p25, p50, p75, p90, width = 800, height = 300, years, title, startYear }) => {
   const months = p50.length
   const maxY = Math.max(...p90)
   const padLeft = 48
@@ -46,7 +47,7 @@ export const FanChart: React.FC<FanChartProps> = ({ p10, p25, p50, p75, p90, wid
   }, [hoverI, months, p50])
 
   const yearsCount = years ?? Math.max(1, Math.round(months / 12))
-  const xTicks = new Array(yearsCount + 1).fill(0).map((_, i) => ({ i: Math.min(months - 1, Math.round((i / yearsCount) * (months - 1))), label: `${i}` }))
+  const xTicks = new Array(yearsCount + 1).fill(0).map((_, i) => ({ i: Math.min(months - 1, Math.round((i / yearsCount) * (months - 1))), label: startYear ? String(startYear + i) : String(i) }))
   const yTicks = [0, 0.25, 0.5, 0.75, 1].map((t) => ({ v: t * maxY, label: formatCurrency(t * maxY) }))
 
   return (
@@ -81,7 +82,7 @@ export const FanChart: React.FC<FanChartProps> = ({ p10, p25, p50, p75, p90, wid
         <text x={4} y={padTop + 10}>{maxLabel}</text>
         <text x={4} y={H - 8}>0</text>
         {xTicks.map((t, idx) => (
-          <text key={idx} x={x(t.i)} y={H - 6} textAnchor="middle">{t.label}y</text>
+          <text key={idx} x={x(t.i)} y={H - 6} textAnchor="middle">{t.label}</text>
         ))}
         {title && <text x={W / 2} y={14} textAnchor="middle" fill="#c8d3e6">{title}</text>}
       </g>

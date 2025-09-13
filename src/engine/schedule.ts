@@ -63,7 +63,10 @@ export function buildTimeline(snapshot: Snapshot, years: number): Timeline {
   if (snapshot.retirement?.target_date) {
     retirementAt = monthIndexFrom(start, snapshot.retirement.target_date)
   }
+  if (retirementAt == null && snapshot.retirement?.target_age != null && snapshot.person?.current_age != null) {
+    const deltaYears = Math.max(0, (snapshot.retirement.target_age as number) - (snapshot.person.current_age as number))
+    retirementAt = Math.round(deltaYears * 12)
+  }
 
   return { months: totalMonths, retirementAt, cashflows: flows.sort((a, b) => a.monthIndex - b.monthIndex) }
 }
-

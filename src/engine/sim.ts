@@ -44,6 +44,7 @@ interface LoopOptions {
   ssMonthly: number
   cashflows: Map<number, number>
   deterministic?: boolean
+  retAt?: number
 }
 
 function runPath(initial: number, targets: Record<AssetClass, number>, opt: LoopOptions): PathStats {
@@ -78,8 +79,9 @@ function runPath(initial: number, targets: Record<AssetClass, number>, opt: Loop
     balances.CASH += cf
 
     // real spend and SS (inflation-adjusted)
-    const spendNominal = spendReal * Math.exp(inflM * m)
-    const ssNominal = ssReal * Math.exp(inflM * m)
+    const retired = opt.retAt == null ? true : m >= opt.retAt
+    const spendNominal = retired ? spendReal * Math.exp(inflM * m) : 0
+    const ssNominal = retired ? ssReal * Math.exp(inflM * m) : 0
     balances.CASH += ssNominal - spendNominal
 
     // rebalance
@@ -120,7 +122,8 @@ export function simulate(snapshot: Snapshot, options: SimOptions = {}): { summar
     rebalEvery,
     spendMonthly,
     ssMonthly,
-    cashflows
+    cashflows,
+    retAt: timeline.retirementAt
   }
 
   const details: PathStats[] = []
@@ -162,6 +165,7 @@ export function simulateDeterministic(snapshot: Snapshot, options: SimOptions = 
     spendMonthly,
     ssMonthly,
     cashflows,
+    retAt: timeline.retirementAt,
     deterministic: true
   }
 
@@ -183,7 +187,7 @@ export function simulateSeries(snapshot: Snapshot, options: SimOptions & { maxPa
   for (const cf of timeline.cashflows) cashflows.set(cf.monthIndex, (cashflows.get(cf.monthIndex) || 0) + cf.amount)
   const spendMonthly = Math.max(0, snapshot.retirement.expected_spend_monthly || 0)
   const ssMonthly = (snapshot.social_security || []).reduce((s, ss) => Math.max(s, ss.monthly_amount || 0), 0)
-  const loopOptBase = { months: timeline.months, inflation, rebalEvery, spendMonthly, ssMonthly, cashflows }
+  const loopOptBase = { months: timeline.months, inflation, rebalEvery, spendMonthly, ssMonthly, cashflows, retAt: timeline.retirementAt }
 
   // Deterministic series with by-class breakdown
   const detSeries = runPathWithSeries(total, weights, { ...loopOptBase, deterministic: true })

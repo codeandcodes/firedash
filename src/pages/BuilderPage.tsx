@@ -18,7 +18,8 @@ const emptySnapshot: Snapshot = {
   expenses: [],
   retirement: { expected_spend_monthly: 4000, target_age: 60, withdrawal_strategy: 'fixed-real' },
   social_security: [],
-  assumptions: { inflation_mode: 'fixed', inflation_pct: 0.02, rebalancing: { frequency: 'annual', threshold_pct: 0.2 } }
+  assumptions: { inflation_mode: 'fixed', inflation_pct: 0.02, rebalancing: { frequency: 'annual', threshold_pct: 0.2 } },
+  person: { current_age: 35 }
 }
 
 export function BuilderPage() {
@@ -187,12 +188,13 @@ export function BuilderPage() {
           <div style={{ display: 'grid', gap: 8 }}>
             <label>Timestamp <input value={draft.timestamp} onChange={(e) => update('timestamp', e.target.value)} /></label>
             <label>Currency <input value={draft.currency} onChange={(e) => update('currency', e.target.value as any)} /></label>
+            <label>Current Age <input type="number" value={draft.person?.current_age || ''} onChange={(e) => update('person', { ...(draft.person || {}), current_age: Number(e.target.value) })} /></label>
           </div>
         </div>
         <div className="card">
           <div className="card-title">Retirement</div>
           <div style={{ display: 'grid', gap: 8 }}>
-            <label>Target Age <input type="number" value={draft.retirement.target_age || ''} onChange={(e) => update('retirement', { ...draft.retirement, target_age: Number(e.target.value) || undefined })} /></label>
+            <label>Retirement Age <input type="number" value={draft.retirement.target_age || ''} onChange={(e) => update('retirement', { ...draft.retirement, target_age: Number(e.target.value) || undefined })} /></label>
             <label>Target Date <input type="date" value={draft.retirement.target_date || ''} onChange={(e) => update('retirement', { ...draft.retirement, target_date: e.target.value || undefined })} /></label>
             <label>Expected Spend (mo) <input type="number" value={draft.retirement.expected_spend_monthly} onChange={(e) => update('retirement', { ...draft.retirement, expected_spend_monthly: Number(e.target.value) })} /></label>
             <label>Withdrawal Strategy

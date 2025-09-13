@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import { useApp } from '@state/AppContext'
 
 export const ScenarioOptions: React.FC = () => {
-  const { simOptions, setSimOptions, snapshot } = useApp()
+  const { simOptions, setSimOptions, snapshot, setSnapshot } = useApp()
 
   // Initialize defaults from snapshot assumptions if present
   useEffect(() => {
@@ -37,7 +37,24 @@ export const ScenarioOptions: React.FC = () => {
                  onChange={(e) => setSimOptions({ inflation: Number(e.target.value) / 100 })} />
         </label>
       </div>
+      {snapshot && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(160px, 1fr))', gap: 12, marginTop: 8 }}>
+          <label>Current Age
+            <input type="number" value={snapshot.person?.current_age || ''}
+                   onChange={(e) => {
+                     const age = Number(e.target.value) || undefined
+                     setSnapshot({ ...snapshot, person: { ...(snapshot.person || {}), current_age: age } })
+                   }} />
+          </label>
+          <label>Retirement Age
+            <input type="number" value={snapshot.retirement?.target_age || ''}
+                   onChange={(e) => {
+                     const age = Number(e.target.value) || undefined
+                     setSnapshot({ ...snapshot, retirement: { ...snapshot.retirement, target_age: age } })
+                   }} />
+          </label>
+        </div>
+      )}
     </div>
   )
 }
-

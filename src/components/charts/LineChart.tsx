@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
 
-export const LineChart: React.FC<{ series: number[]; width?: number; height?: number; color?: string; label?: string; years?: number }> = ({ series, width = 800, height = 240, color = '#a6da95', label, years }) => {
+export const LineChart: React.FC<{ series: number[]; width?: number; height?: number; color?: string; label?: string; years?: number; startYear?: number }> = ({ series, width = 800, height = 240, color = '#a6da95', label, years, startYear }) => {
   const maxY = Math.max(...series)
   const padLeft = 48
   const padBottom = 28
@@ -22,7 +22,7 @@ export const LineChart: React.FC<{ series: number[]; width?: number; height?: nu
   }, [hoverI, months, series])
 
   const yearsCount = years ?? Math.max(1, Math.round(months / 12))
-  const xTicks = new Array(yearsCount + 1).fill(0).map((_, i) => ({ i: Math.min(months - 1, Math.round((i / yearsCount) * (months - 1))), label: `${i}` }))
+  const xTicks = new Array(yearsCount + 1).fill(0).map((_, i) => ({ i: Math.min(months - 1, Math.round((i / yearsCount) * (months - 1))), label: startYear ? String(startYear + i) : String(i) }))
   const yTicks = [0, 0.25, 0.5, 0.75, 1].map((t) => ({ v: t * maxY, label: `$${Math.round(t * maxY).toLocaleString()}` }))
 
   return (
@@ -41,7 +41,7 @@ export const LineChart: React.FC<{ series: number[]; width?: number; height?: nu
       </g>
       <path d={path} fill="none" stroke={color} strokeWidth={2} />
       <g fill="#9aa4b2" fontSize="10">
-        {xTicks.map((t, idx) => (<text key={idx} x={x(t.i)} y={H - 6} textAnchor="middle">{t.label}y</text>))}
+        {xTicks.map((t, idx) => (<text key={idx} x={x(t.i)} y={H - 6} textAnchor="middle">{t.label}</text>))}
         <text x={W / 2} y={14} textAnchor="middle" fill="#c8d3e6">{label || 'Balance over time'}</text>
       </g>
       {hover && (
