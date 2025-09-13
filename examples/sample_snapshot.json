@@ -1,0 +1,57 @@
+{
+  "timestamp": "2025-01-01T00:00:00Z",
+  "currency": "USD",
+  "accounts": [
+    {
+      "id": "taxable-1",
+      "type": "taxable-brokerage",
+      "name": "Brokerage",
+      "holdings": [
+        { "ticker": "VTI", "units": 200, "price": 240.0 },
+        { "ticker": "VXUS", "units": 150, "price": 62.0 }
+      ],
+      "cash_balance": 5000
+    },
+    {
+      "id": "401k-1",
+      "type": "401k",
+      "name": "Employer 401k",
+      "holdings": [
+        { "asset_class": "US_BONDS", "units": 1000, "price": 10.0 }
+      ]
+    }
+  ],
+  "real_estate": [
+    {
+      "id": "home",
+      "value": 600000,
+      "mortgage_balance": 300000,
+      "rate": 0.035,
+      "payment": 2200,
+      "taxes": 6000,
+      "insurance": 1200,
+      "maintenance_pct": 0.01
+    }
+  ],
+  "contributions": [
+    { "account_id": "401k-1", "amount": 1500, "frequency": "monthly" }
+  ],
+  "expenses": [
+    { "amount": 3500, "frequency": "monthly", "category": "living" }
+  ],
+  "retirement": {
+    "target_age": 55,
+    "expected_spend_monthly": 4500,
+    "withdrawal_strategy": "fixed-real"
+  },
+  "social_security": [
+    { "claim_age": 67, "monthly_amount": 2500, "COLA": 0.02 }
+  ],
+  "assumptions": {
+    "inflation_mode": "fixed",
+    "inflation_pct": 0.025,
+    "rebalancing": { "frequency": "annual", "threshold_pct": 0.2 },
+    "tax_profile": { "federal_marginal": 0.22, "ltcg_rate": 0.15, "state_rate": 0.05 }
+  }
+}
+
