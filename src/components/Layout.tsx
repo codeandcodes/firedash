@@ -3,6 +3,7 @@ import React from 'react'
 
 const navItems = [
   { to: '/upload', label: 'Upload' },
+  { to: '/builder', label: 'Builder' },
   { to: '/snapshot', label: 'Snapshot' },
   { to: '/contrib-expenses', label: 'Contrib & Expenses' },
   { to: '/real-estate', label: 'Real Estate' },
@@ -30,4 +31,3 @@ export const Layout: React.FC<React.PropsWithChildren> = ({ children }) => {
     </div>
   )
 }
-

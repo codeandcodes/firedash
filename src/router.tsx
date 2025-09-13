@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { UploadPage } from '@pages/UploadPage'
+import { BuilderPage } from '@pages/BuilderPage'
 import { PortfolioSnapshotPage } from '@pages/PortfolioSnapshotPage'
 import { ContributionsExpensesPage } from '@pages/ContributionsExpensesPage'
 import { RealEstatePage } from '@pages/RealEstatePage'
@@ -14,6 +15,7 @@ export function AppRouter() {
     <Routes>
       <Route path="/" element={<Navigate to="/upload" replace />} />
       <Route path="/upload" element={<UploadPage />} />
+      <Route path="/builder" element={<BuilderPage />} />
       <Route path="/snapshot" element={<PortfolioSnapshotPage />} />
       <Route path="/contrib-expenses" element={<ContributionsExpensesPage />} />
       <Route path="/real-estate" element={<RealEstatePage />} />
@@ -25,4 +27,3 @@ export function AppRouter() {
     </Routes>
   )
 }
-
