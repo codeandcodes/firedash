@@ -1,4 +1,4 @@
-export type AssetClass = 'US_STOCK' | 'INTL_STOCK' | 'BONDS' | 'REIT' | 'CASH' | 'REAL_ESTATE' | 'CRYPTO'
+export type AssetClass = 'US_STOCK' | 'INTL_STOCK' | 'BONDS' | 'REIT' | 'CASH' | 'REAL_ESTATE' | 'CRYPTO' | 'GOLD'
 
 export interface ReturnParams {
   mu: number // annualized arithmetic mean return (approx)
@@ -10,6 +10,7 @@ export interface SimOptions {
   inflation?: number // annual
   rebalFreq?: 'annual' | 'quarterly' | 'monthly'
   paths?: number
+  mcMode?: 'regime' | 'gbm'
 }
 
 export interface PathStats {

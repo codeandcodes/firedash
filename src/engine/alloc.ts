@@ -8,11 +8,13 @@ export const DEFAULT_RETURNS: Record<AssetClass, ReturnParams> = {
   REIT: { mu: 0.065, sigma: 0.2 },
   CASH: { mu: 0.015, sigma: 0.01 },
   REAL_ESTATE: { mu: 0.03, sigma: 0.12 },
-  CRYPTO: { mu: 0.08, sigma: 0.8 }
+  CRYPTO: { mu: 0.08, sigma: 0.8 },
+  GOLD: { mu: 0.02, sigma: 0.15 }
 }
 
 export function classifyHolding(h: HoldingLot): AssetClass {
   const t = (h.ticker || h.asset_class || '').toUpperCase()
+  if (/(GLD|IAU|SGOL|PHYS|GOLD)/.test(t)) return 'GOLD'
   if (/(BTC|ETH|SOL|ADA|DOGE|MATIC|CRYPTO)/.test(t) || t.includes('-USD')) return 'CRYPTO'
   if (/VXUS|IXUS|XUS|VEU|IEFA/.test(t)) return 'INTL_STOCK'
   if (/BND|AGG|IEF|TLT|BOND|VBTLX/.test(t)) return 'BONDS'
@@ -27,7 +29,7 @@ export interface Allocation {
 }
 
 export function computeAllocation(snapshot: Snapshot): Allocation {
-  const sums: Record<AssetClass, number> = { US_STOCK: 0, INTL_STOCK: 0, BONDS: 0, REIT: 0, CASH: 0, REAL_ESTATE: 0, CRYPTO: 0 }
+  const sums: Record<AssetClass, number> = { US_STOCK: 0, INTL_STOCK: 0, BONDS: 0, REIT: 0, CASH: 0, REAL_ESTATE: 0, CRYPTO: 0, GOLD: 0 }
   for (const a of snapshot.accounts) {
     if (a.cash_balance) sums.CASH += a.cash_balance
     for (const h of a.holdings || []) {
@@ -39,7 +41,7 @@ export function computeAllocation(snapshot: Snapshot): Allocation {
     if (re.value) sums.REAL_ESTATE += re.value
   }
   const total = Object.values(sums).reduce((s, x) => s + x, 0)
-  const weights: Record<AssetClass, number> = { US_STOCK: 0, INTL_STOCK: 0, BONDS: 0, REIT: 0, CASH: 0, REAL_ESTATE: 0, CRYPTO: 0 }
+  const weights: Record<AssetClass, number> = { US_STOCK: 0, INTL_STOCK: 0, BONDS: 0, REIT: 0, CASH: 0, REAL_ESTATE: 0, CRYPTO: 0, GOLD: 0 }
   if (total > 0) {
     (Object.keys(sums) as AssetClass[]).forEach((k) => (weights[k] = sums[k] / total))
   }

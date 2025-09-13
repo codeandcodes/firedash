@@ -22,7 +22,7 @@ export function PortfolioSnapshotPage() {
     s + (a.holdings || []).reduce((h, lot) => h + lot.units * lot.price, 0), 0)
   const total = totalCash + totalHoldings
   const alloc = computeAllocation(snapshot)
-  const COLORS: Record<string, string> = { US_STOCK: '#7aa2f7', INTL_STOCK: '#91d7e3', BONDS: '#a6da95', REIT: '#f5a97f', CASH: '#eed49f', REAL_ESTATE: '#c6a0f6', CRYPTO: '#f28fad' }
+  const COLORS: Record<string, string> = { US_STOCK: '#7aa2f7', INTL_STOCK: '#91d7e3', BONDS: '#a6da95', REIT: '#f5a97f', CASH: '#eed49f', REAL_ESTATE: '#c6a0f6', CRYPTO: '#f28fad', GOLD: '#e5c07b' }
   // Use absolute dollars for global pie to avoid tiny slices rounding away
   const globalSums: Record<string, number> = { US_STOCK: 0, INTL_STOCK: 0, BONDS: 0, REIT: 0, CASH: 0, REAL_ESTATE: 0 }
   for (const a of snapshot.accounts) {

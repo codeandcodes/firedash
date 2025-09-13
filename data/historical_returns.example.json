@@ -1,0 +1,15 @@
+{
+  "meta": {
+    "source": "Provide monthly total returns per asset class (decimal)",
+    "notes": "This is a minimal example; replace with full history."
+  },
+  "rows": [
+    { "year": 2018, "month": 1, "returns": { "US_STOCK": 0.054, "INTL_STOCK": 0.047, "BONDS": -0.011, "REIT": 0.035, "CASH": 0.001 } },
+    { "year": 2018, "month": 2, "returns": { "US_STOCK": -0.034, "INTL_STOCK": -0.046, "BONDS": -0.002, "REIT": -0.071, "CASH": 0.001 } },
+    { "year": 2018, "month": 3, "returns": { "US_STOCK": -0.028, "INTL_STOCK": -0.019, "BONDS": 0.006, "REIT": -0.039, "CASH": 0.001 } },
+    { "year": 2018, "month": 4, "returns": { "US_STOCK": 0.004, "INTL_STOCK": -0.019, "BONDS": -0.003, "REIT": 0.010, "CASH": 0.001 } },
+    { "year": 2018, "month": 5, "returns": { "US_STOCK": 0.023, "INTL_STOCK": -0.011, "BONDS": 0.005, "REIT": 0.032, "CASH": 0.001 } },
+    { "year": 2018, "month": 6, "returns": { "US_STOCK": 0.004, "INTL_STOCK": -0.019, "BONDS": 0.001, "REIT": 0.028, "CASH": 0.001 } }
+  ]
+}
+

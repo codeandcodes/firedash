@@ -8,7 +8,8 @@ const COLORS: Record<AssetClass, string> = {
   REIT: '#f5a97f',
   CASH: '#eed49f',
   REAL_ESTATE: '#c6a0f6',
-  CRYPTO: '#f28fad'
+  CRYPTO: '#f28fad',
+  GOLD: '#e5c07b'
 }
 
 export const StackedArea: React.FC<{ byClass: Record<AssetClass, number[]>; width?: number; height?: number; years?: number; startYear?: number; retAt?: number }> = ({ byClass, width = 800, height = 300, years, startYear, retAt }) => {

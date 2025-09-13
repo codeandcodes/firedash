@@ -4,7 +4,8 @@ import { useApp } from '@state/AppContext'
 import type { Snapshot, Account, HoldingLot, RealEstate, Contribution, Expense, SocialSecurity, Assumptions } from '@types/schema'
 import { validateSnapshot } from '@types/schema'
 import { importMonarchFromString } from '@importers/monarch'
-import { Accordion, AccordionDetails, AccordionSummary, Button, Card, CardContent, Grid, IconButton, InputLabel, MenuItem, Select, TextField, Typography, FormControl } from '@mui/material'
+import { Accordion, AccordionDetails, AccordionSummary, Button, Card, CardContent, Grid, IconButton, InputLabel, MenuItem, Select, TextField, Typography, FormControl, Tooltip, InputAdornment, Stack } from '@mui/material'
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import DeleteIcon from '@mui/icons-material/Delete'
 import AddIcon from '@mui/icons-material/Add'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
@@ -83,6 +84,24 @@ export function BuilderPage() {
   }
   function setRealEstate(idx: number, patch: Partial<RealEstate>) {
     const next = (draft.real_estate || []).slice(); next[idx] = { ...next[idx], ...patch }; update('real_estate', next)
+  }
+  function estimateRealEstate(idx: number) {
+    const re = (draft.real_estate || [])[idx]
+    if (!re) return
+    const v = re.value || 0
+    const taxRate = (re.zip || '').startsWith('94') ? 0.011 : 0.01
+    const est = {
+      taxes: Math.round(v * taxRate),
+      insurance: Math.round(v * 0.004),
+      maintenance_pct: 0.01,
+      appreciation_pct: re.appreciation_pct ?? 0.035,
+      rental: {
+        rent: Math.round((re.rental?.rent ?? v * 0.005)),
+        vacancy_pct: re.rental?.vacancy_pct ?? 0.05,
+        expenses: re.rental?.expenses ?? 150
+      }
+    } as Partial<RealEstate>
+    setRealEstate(idx, est)
   }
   function removeRealEstate(idx: number) {
     const next = (draft.real_estate || []).slice(); next.splice(idx, 1); update('real_estate', next)
@@ -279,20 +298,36 @@ export function BuilderPage() {
             <Grid container spacing={2}>
               <Grid item xs={12} md={3}><TextField fullWidth label="ID" value={re.id} onChange={(e) => setRealEstate(i, { id: e.target.value })} /></Grid>
               <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Value" value={re.value} onChange={(e) => setRealEstate(i, { value: Number(e.target.value) })} /></Grid>
-              <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Mortgage Balance" value={re.mortgage_balance || 0} onChange={(e) => setRealEstate(i, { mortgage_balance: Number(e.target.value) })} /></Grid>
-              <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Rate" value={re.rate || 0} onChange={(e) => setRealEstate(i, { rate: Number(e.target.value) })} /></Grid>
+              <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Mortgage Balance" value={re.mortgage_balance || 0} error={(re.mortgage_balance||0) < 0} helperText={(re.mortgage_balance||0) < 0 ? 'Must be >= 0' : ' '} onChange={(e) => setRealEstate(i, { mortgage_balance: Number(e.target.value) })} /></Grid>
+              <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Rate (APR)" value={re.rate || 0} helperText="e.g., 0.035 = 3.5%" error={(re.rate||0) < 0} onChange={(e) => setRealEstate(i, { rate: Number(e.target.value) })} /></Grid>
               <Grid item xs={12} md={3}><TextField fullWidth label="Zip" value={re.zip || ''} onChange={(e) => setRealEstate(i, { zip: e.target.value })} placeholder="e.g., 94087" /></Grid>
               <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Payment" value={re.payment || 0} onChange={(e) => setRealEstate(i, { payment: Number(e.target.value) })} /></Grid>
-              <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Taxes (annual)" value={re.taxes || 0} onChange={(e) => setRealEstate(i, { taxes: Number(e.target.value) })} /></Grid>
-              <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Insurance (annual)" value={re.insurance || 0} onChange={(e) => setRealEstate(i, { insurance: Number(e.target.value) })} /></Grid>
-              <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Maintenance %" value={((re.maintenance_pct || 0) * 100).toString()} onChange={(e) => setRealEstate(i, { maintenance_pct: Number(e.target.value) / 100 })} /></Grid>
-              <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Appreciation %" value={((re.appreciation_pct || 0) * 100).toString()} onChange={(e) => setRealEstate(i, { appreciation_pct: Number(e.target.value) / 100 })} /></Grid>
+              <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Taxes (annual)" value={re.taxes || 0} error={(re.taxes||0)<0} helperText={(re.taxes||0)<0?'Must be >= 0':' '} onChange={(e) => setRealEstate(i, { taxes: Number(e.target.value) })} /></Grid>
+              <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Insurance (annual)" value={re.insurance || 0} error={(re.insurance||0)<0} helperText={(re.insurance||0)<0?'Must be >= 0':' '} onChange={(e) => setRealEstate(i, { insurance: Number(e.target.value) })} /></Grid>
+              <Grid item xs={12} md={3}>
+                <TextField type="number" fullWidth label="Maintenance %" value={((re.maintenance_pct || 0) * 100).toString()}
+                           error={(re.maintenance_pct||0) < 0 || (re.maintenance_pct||0) > 1}
+                           helperText="Annual % of value"
+                           InputProps={{ endAdornment: <InputAdornment position="end"><Tooltip title="Typical rule of thumb is ~1% annually"><InfoOutlinedIcon fontSize="small" /></Tooltip></InputAdornment> }}
+                           onChange={(e) => setRealEstate(i, { maintenance_pct: Number(e.target.value) / 100 })} />
+              </Grid>
+              <Grid item xs={12} md={3}>
+                <TextField type="number" fullWidth label="Appreciation %" value={((re.appreciation_pct || 0) * 100).toString()}
+                           error={(re.appreciation_pct||0) < 0 || (re.appreciation_pct||0) > 1}
+                           helperText="Long-run expected annual %"
+                           InputProps={{ endAdornment: <InputAdornment position="end"><Tooltip title="Edit if you have a better local estimate"><InfoOutlinedIcon fontSize="small" /></Tooltip></InputAdornment> }}
+                           onChange={(e) => setRealEstate(i, { appreciation_pct: Number(e.target.value) / 100 })} />
+              </Grid>
+              <Grid item xs={12}><Button size="small" onClick={() => estimateRealEstate(i)}>Estimate fields</Button></Grid>
             </Grid>
             <Typography variant="subtitle2" sx={{ mt: 2 }}>Rental (optional)</Typography>
             <Grid container spacing={2}>
-              <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Rent (monthly)" value={re.rental?.rent || 0} onChange={(e) => setRealEstate(i, { rental: { ...(re.rental || {}), rent: Number(e.target.value) } as any })} /></Grid>
-              <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Vacancy %" value={((re.rental?.vacancy_pct || 0) * 100).toString()} onChange={(e) => setRealEstate(i, { rental: { ...(re.rental || {}), vacancy_pct: Number(e.target.value) / 100 } as any })} /></Grid>
-              <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Expenses (monthly)" value={re.rental?.expenses || 0} onChange={(e) => setRealEstate(i, { rental: { ...(re.rental || {}), expenses: Number(e.target.value) } as any })} /></Grid>
+              <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Rent (monthly)" value={re.rental?.rent || 0} error={(re.rental?.rent||0)<0} helperText={(re.rental?.rent||0)<0?'Must be >= 0':' '}
+                           InputProps={{ endAdornment: <InputAdornment position="end"><Tooltip title="Quick estimate uses ~0.5% of value per month"><InfoOutlinedIcon fontSize="small" /></Tooltip></InputAdornment> }}
+                           onChange={(e) => setRealEstate(i, { rental: { ...(re.rental || {}), rent: Number(e.target.value) } as any })} /></Grid>
+              <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Vacancy %" value={((re.rental?.vacancy_pct || 0) * 100).toString()} error={(re.rental?.vacancy_pct||0) < 0 || (re.rental?.vacancy_pct||0) > 1} helperText="Percent of time vacant"
+                           onChange={(e) => setRealEstate(i, { rental: { ...(re.rental || {}), vacancy_pct: Number(e.target.value) / 100 } as any })} /></Grid>
+              <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Expenses (monthly)" value={re.rental?.expenses || 0} error={(re.rental?.expenses||0)<0} helperText={(re.rental?.expenses||0)<0?'Must be >= 0':' '} onChange={(e) => setRealEstate(i, { rental: { ...(re.rental || {}), expenses: Number(e.target.value) } as any })} /></Grid>
             </Grid>
           </AccordionDetails>
         </Accordion>
@@ -347,8 +382,11 @@ export function BuilderPage() {
       {(draft.social_security || []).map((s, i) => (
         <Grid key={i} container spacing={1} alignItems="center" sx={{ mb: 1 }}>
           <Grid item xs={12} md={2}><TextField type="number" fullWidth label="Claim Age" value={s.claim_age} onChange={(e) => setSS(i, { claim_age: Number(e.target.value) })} /></Grid>
-          <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Monthly Amount" value={s.monthly_amount} onChange={(e) => setSS(i, { monthly_amount: Number(e.target.value) })} /></Grid>
-          <Grid item xs={12} md={2}><TextField type="number" fullWidth label="COLA %" value={((s.COLA ?? 0) * 100).toString()} onChange={(e) => setSS(i, { COLA: Number(e.target.value) / 100 })} /></Grid>
+          <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Monthly Amount" value={s.monthly_amount} error={s.monthly_amount<0} helperText={s.monthly_amount<0?'Must be >= 0':' '}
+                                               onChange={(e) => setSS(i, { monthly_amount: Number(e.target.value) })} /></Grid>
+          <Grid item xs={12} md={2}><TextField type="number" fullWidth label="COLA %" value={((s.COLA ?? 0) * 100).toString()} error={(s.COLA||0) < 0 || (s.COLA||0) > 0.1}
+                                               InputProps={{ endAdornment: <InputAdornment position="end"><Tooltip title="Cost-of-living adjustment annual %"><InfoOutlinedIcon fontSize="small" /></Tooltip></InputAdornment> }}
+                                               onChange={(e) => setSS(i, { COLA: Number(e.target.value) / 100 })} /></Grid>
           <Grid item xs={12} md={1}><IconButton onClick={() => removeSS(i)}><DeleteIcon /></IconButton></Grid>
         </Grid>
       ))}

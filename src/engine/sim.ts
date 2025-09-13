@@ -3,6 +3,7 @@ import type { AssetClass, MonteSummary, PathStats, SimOptions } from '@types/eng
 import { DEFAULT_RETURNS, computeAllocation } from './alloc'
 import { buildTimeline } from './schedule'
 import { DEFAULT_RETURNS as RETURNS } from './alloc'
+import { tryLoadHistorical, createBootstrapSampler } from './historical'
 
 function monthlyParams(mu: number, sigma: number) {
   const muLog = Math.log(1 + mu)
@@ -28,7 +29,7 @@ function deterministicReturn(muM: number): number {
 }
 
 type Balances = Record<AssetClass, number>
-const ASSET_CLASSES: AssetClass[] = ['US_STOCK', 'INTL_STOCK', 'BONDS', 'REIT', 'CASH', 'REAL_ESTATE', 'CRYPTO']
+const ASSET_CLASSES: AssetClass[] = ['US_STOCK', 'INTL_STOCK', 'BONDS', 'REIT', 'CASH', 'REAL_ESTATE', 'CRYPTO', 'GOLD']
 
 function rebalance(balances: Balances, targets: Record<AssetClass, number>) {
   const total = ASSET_CLASSES.reduce((s, k) => s + balances[k], 0)
@@ -46,10 +47,17 @@ interface LoopOptions {
   deterministic?: boolean
   retAt?: number
   rentalNetMonthly?: number
+  mcMode?: 'regime' | 'gbm'
+}
+
+function zeroBalances(): Balances {
+  const b: any = {}
+  ASSET_CLASSES.forEach((k) => (b[k] = 0))
+  return b as Balances
 }
 
 function runPath(initial: number, targets: Record<AssetClass, number>, opt: LoopOptions): PathStats {
-  let balances: Balances = { US_STOCK: 0, INTL_STOCK: 0, BONDS: 0, REIT: 0, CASH: 0, REAL_ESTATE: 0, CRYPTO: 0 }
+  let balances: Balances = zeroBalances()
   // seed by targets
   ASSET_CLASSES.forEach((k) => (balances[k] = initial * (targets[k] || 0)))
 
@@ -61,6 +69,17 @@ function runPath(initial: number, targets: Record<AssetClass, number>, opt: Loop
     })
   ) as Record<AssetClass, { muM: number; sigmaM: number }>
 
+  let sampler: { next(): Record<AssetClass, number> } | null = null
+  if (!opt.deterministic) {
+    if (opt.mcMode === 'bootstrap') {
+      const hist = tryLoadHistorical()
+      if (hist) sampler = createBootstrapSampler(hist, opt.months, ASSET_CLASSES, { blockMonths: 24, jitterSigma: 0.005 })
+      else sampler = createRegimeSampler()
+    } else if (opt.mcMode === 'regime') {
+      sampler = createRegimeSampler()
+    }
+  }
+
   const inflM = Math.log(1 + opt.inflation) / 12
   const spendReal = opt.spendMonthly
   const ssReal = opt.ssMonthly
@@ -71,7 +90,7 @@ function runPath(initial: number, targets: Record<AssetClass, number>, opt: Loop
     // apply returns
     ASSET_CLASSES.forEach((k) => {
       const p = paramsM[k]
-      const r = opt.deterministic ? deterministicReturn(p.muM) : sampleReturn(p.muM, p.sigmaM)
+      const r = opt.deterministic ? deterministicReturn(p.muM) : sampler ? sampler.next()[k] : sampleReturn(p.muM, p.sigmaM)
       balances[k] *= 1 + r
     })
 
@@ -134,7 +153,7 @@ export function simulate(snapshot: Snapshot, options: SimOptions = {}): { summar
 
   const details: PathStats[] = []
   for (let i = 0; i < paths; i++) {
-    details.push(runPath(total, weights, { ...loopOpt }))
+    details.push(runPath(total, weights, { ...loopOpt, mcMode: options.mcMode || 'regime' }))
   }
 
   const terminals = details.map((d) => d.terminal).sort((a, b) => a - b)
@@ -206,7 +225,7 @@ export function simulateSeries(snapshot: Snapshot, options: SimOptions & { maxPa
   // Monte Carlo series for total balances; compute percentiles per month
   const series: number[][] = []
   for (let i = 0; i < maxPaths; i++) {
-    const s = runPathWithSeries(total, weights, { ...loopOptBase, rentalNetMonthly: timeline.rentalNetMonthly }).total
+    const s = runPathWithSeries(total, weights, { ...loopOptBase, rentalNetMonthly: timeline.rentalNetMonthly, mcMode: options.mcMode || 'regime' }).total
     series.push(s)
   }
   const months = timeline.months
@@ -229,7 +248,7 @@ export function simulateSeries(snapshot: Snapshot, options: SimOptions & { maxPa
 
 function runPathWithSeries(initial: number, targets: Record<AssetClass, number>, opt: LoopOptions) {
   // Initialize balances
-  let balances: Record<AssetClass, number> = { US_STOCK: 0, INTL_STOCK: 0, BONDS: 0, REIT: 0, CASH: 0, REAL_ESTATE: 0, CRYPTO: 0 }
+  let balances: Record<AssetClass, number> = zeroBalances()
   ASSET_CLASSES.forEach((k) => (balances[k] = initial * (targets[k] || 0)))
   const paramsM = Object.fromEntries(
     ASSET_CLASSES.map((k) => {
@@ -238,26 +257,29 @@ function runPathWithSeries(initial: number, targets: Record<AssetClass, number>,
       return [k, { muM, sigmaM }]
     })
   ) as Record<AssetClass, { muM: number; sigmaM: number }>
+  let sampler: { next(): Record<AssetClass, number> } | null = null
+  if (!opt.deterministic) {
+    if (opt.mcMode === 'bootstrap') {
+      const hist = tryLoadHistorical()
+      if (hist) sampler = createBootstrapSampler(hist, opt.months, ASSET_CLASSES, { blockMonths: 24, jitterSigma: 0.005 })
+      else sampler = createRegimeSampler()
+    } else if (opt.mcMode === 'regime') {
+      sampler = createRegimeSampler()
+    }
+  }
 
   const inflM = Math.log(1 + opt.inflation) / 12
   const spendReal = opt.spendMonthly
   const ssReal = opt.ssMonthly
 
   const total: number[] = new Array(opt.months)
-  const byClass: Record<AssetClass, number[]> = {
-    US_STOCK: new Array(opt.months),
-    INTL_STOCK: new Array(opt.months),
-    BONDS: new Array(opt.months),
-    REIT: new Array(opt.months),
-    CASH: new Array(opt.months),
-    REAL_ESTATE: new Array(opt.months),
-    CRYPTO: new Array(opt.months)
-  }
+  const byClass: Record<AssetClass, number[]> = {} as any
+  ASSET_CLASSES.forEach((k) => { byClass[k] = new Array(opt.months) })
 
   for (let m = 0; m < opt.months; m++) {
     ASSET_CLASSES.forEach((k) => {
       const p = paramsM[k]
-      const r = opt.deterministic ? deterministicReturn(p.muM) : sampleReturn(p.muM, p.sigmaM)
+      const r = opt.deterministic ? deterministicReturn(p.muM) : sampler ? sampler.next()[k] : sampleReturn(p.muM, p.sigmaM)
       balances[k] *= 1 + r
     })
     let cf = opt.cashflows.get(m) || 0
@@ -285,4 +307,54 @@ function realEstateMu(snapshot: Snapshot): number {
     wmu += (v / total) * mu
   }
   return wmu
+}
+
+// Regime-based return sampler to model sequences with persistent downturns
+type Regime = 'bull' | 'bear' | 'stagnation'
+interface RegimeParams { mu: Record<AssetClass, number>; sigma: Record<AssetClass, number> }
+
+function createRegimeSampler() {
+  let state: Regime = 'bull'
+  // Monthly regime transition probabilities
+  const T: Record<Regime, Record<Regime, number>> = {
+    bull: { bull: 0.90, bear: 0.05, stagnation: 0.05 },
+    bear: { bear: 0.85, bull: 0.10, stagnation: 0.05 },
+    stagnation: { stagnation: 0.80, bull: 0.15, bear: 0.05 }
+  }
+  const params: Record<Regime, RegimeParams> = {
+    bull: {
+      mu: { US_STOCK: 0.009, INTL_STOCK: 0.008, BONDS: 0.002, REIT: 0.008, CASH: 0.001, REAL_ESTATE: 0.003, CRYPTO: 0.03 },
+      sigma: { US_STOCK: 0.04, INTL_STOCK: 0.05, BONDS: 0.015, REIT: 0.06, CASH: 0.002, REAL_ESTATE: 0.03, CRYPTO: 0.20 }
+    },
+    bear: {
+      mu: { US_STOCK: -0.015, INTL_STOCK: -0.017, BONDS: 0.004, REIT: -0.013, CASH: 0.001, REAL_ESTATE: -0.005, CRYPTO: -0.06 },
+      sigma: { US_STOCK: 0.07, INTL_STOCK: 0.08, BONDS: 0.02, REIT: 0.08, CASH: 0.002, REAL_ESTATE: 0.05, CRYPTO: 0.30 }
+    },
+    stagnation: {
+      mu: { US_STOCK: 0.0, INTL_STOCK: 0.0, BONDS: 0.001, REIT: 0.0, CASH: 0.001, REAL_ESTATE: 0.001, CRYPTO: 0.0 },
+      sigma: { US_STOCK: 0.03, INTL_STOCK: 0.035, BONDS: 0.012, REIT: 0.04, CASH: 0.002, REAL_ESTATE: 0.02, CRYPTO: 0.20 }
+    }
+  }
+  function stepState() {
+    const r = Math.random()
+    const row = T[state]
+    let acc = 0
+    for (const s of ['bull','bear','stagnation'] as Regime[]) {
+      acc += row[s]
+      if (r <= acc) { state = s; break }
+    }
+  }
+  return {
+    next(): Record<AssetClass, number> {
+      // evolve state with persistence
+      stepState()
+      const p = params[state]
+      const ret: Record<AssetClass, number> = { US_STOCK: 0, INTL_STOCK: 0, BONDS: 0, REIT: 0, CASH: 0, REAL_ESTATE: 0, CRYPTO: 0 }
+      ASSET_CLASSES.forEach((k) => {
+        const r = p.mu[k] + p.sigma[k] * randn()
+        ret[k] = r
+      })
+      return ret
+    }
+  }
 }

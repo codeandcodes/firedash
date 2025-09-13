@@ -14,13 +14,17 @@ export const AppThemeProvider: React.FC<React.PropsWithChildren> = ({ children }
   const [mode, setMode] = useState<Mode>('dark')
   const toggle = () => setMode((m) => (m === 'dark' ? 'light' : 'dark'))
 
+  const palette: any = {
+    mode,
+    primary: { main: '#7aa2f7' },
+    secondary: { main: '#a6da95' }
+  }
+  if (mode === 'dark') {
+    palette.background = { default: '#0f1522', paper: '#101626' }
+  }
+
   const theme = useMemo(() => createTheme({
-    palette: {
-      mode,
-      primary: { main: '#7aa2f7' },
-      secondary: { main: '#a6da95' },
-      background: mode === 'dark' ? { default: '#0f1522', paper: '#101626' } : undefined
-    },
+    palette,
     shape: { borderRadius: 10 },
     components: {
       MuiCard: { styleOverrides: { root: { borderColor: mode === 'dark' ? '#1f2940' : '#e0e0e0', borderWidth: 1, borderStyle: 'solid' } } },
@@ -42,4 +46,3 @@ export function useThemeMode() {
   if (!c) throw new Error('useThemeMode must be used within AppThemeProvider')
   return c
 }
-
