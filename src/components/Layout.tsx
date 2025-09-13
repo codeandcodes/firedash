@@ -2,6 +2,10 @@ import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { AppBar, Box, CssBaseline, Divider, Drawer, IconButton, List, ListItem, ListItemButton, ListItemText, Toolbar, Typography } from '@mui/material'
 import MenuIcon from '@mui/icons-material/Menu'
+import Brightness4Icon from '@mui/icons-material/Brightness4'
+import Brightness7Icon from '@mui/icons-material/Brightness7'
+import { useTheme } from '@mui/material/styles'
+import { useThemeMode } from '@state/ThemeContext'
 
 const drawerWidth = 240
 const navItems = [
@@ -20,6 +24,8 @@ const navItems = [
 export const Layout: React.FC<React.PropsWithChildren> = ({ children }) => {
   const [mobileOpen, setMobileOpen] = React.useState(false)
   const { pathname } = useLocation()
+  const theme = useTheme()
+  const { mode, toggle } = useThemeMode()
 
   const drawer = (
     <div>
@@ -45,9 +51,10 @@ export const Layout: React.FC<React.PropsWithChildren> = ({ children }) => {
           <IconButton color="inherit" edge="start" onClick={() => setMobileOpen(!mobileOpen)} sx={{ mr: 2, display: { sm: 'none' } }}>
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div">
-            Firedash
-          </Typography>
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>Firedash</Typography>
+          <IconButton color="inherit" onClick={toggle}>
+            {theme.palette.mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
+          </IconButton>
         </Toolbar>
       </AppBar>
       <Box component="nav" sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }} aria-label="navigation">

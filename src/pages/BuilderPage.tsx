@@ -4,7 +4,9 @@ import { useApp } from '@state/AppContext'
 import type { Snapshot, Account, HoldingLot, RealEstate, Contribution, Expense, SocialSecurity, Assumptions } from '@types/schema'
 import { validateSnapshot } from '@types/schema'
 import { importMonarchFromString } from '@importers/monarch'
-import { Accordion, AccordionDetails, AccordionSummary, Button, Card, CardContent, Grid, TextField, Typography } from '@mui/material'
+import { Accordion, AccordionDetails, AccordionSummary, Button, Card, CardContent, Grid, IconButton, InputLabel, MenuItem, Select, TextField, Typography, FormControl } from '@mui/material'
+import DeleteIcon from '@mui/icons-material/Delete'
+import AddIcon from '@mui/icons-material/Add'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 
 function nowIso() {
@@ -222,111 +224,133 @@ export function BuilderPage() {
         </Grid>
       </Grid>
 
-      <h2>Accounts</h2>
-      <button onClick={addAccount}>Add Account</button>
+      <Typography variant="h6" sx={{ mt: 3 }}>Accounts</Typography>
+      <Button startIcon={<AddIcon />} sx={{ mt: 1, mb: 1 }} onClick={addAccount}>Add Account</Button>
       {draft.accounts.map((a, i) => (
-        <div key={i} className="card" style={{ marginTop: 12 }}>
-          <div className="card-title">Account #{i + 1}</div>
-          <div className="row" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-            <label>ID <input value={a.id} onChange={(e) => setAccount(i, { id: e.target.value })} /></label>
-            <label>Name <input value={a.name || ''} onChange={(e) => setAccount(i, { name: e.target.value })} /></label>
-            <label>Type
-              <select value={a.type} onChange={(e) => setAccount(i, { type: e.target.value as Account['type'] })}>
-                <option>taxable-brokerage</option>
-                <option>401k</option>
-                <option>ira</option>
-                <option>roth</option>
-                <option>hsa</option>
-                <option>cash</option>
-              </select>
-            </label>
-            <label>Cash Balance <input type="number" value={a.cash_balance || 0} onChange={(e) => setAccount(i, { cash_balance: Number(e.target.value) })} /></label>
-          </div>
-          <div style={{ marginTop: 8 }}>
-            <strong>Holdings</strong> <button onClick={() => addHolding(i)}>Add Holding</button>
+        <Accordion key={i} defaultExpanded sx={{ mb: 1 }}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography sx={{ flexGrow: 1 }}>Account #{i + 1}: {a.name || a.id}</Typography>
+            <IconButton onClick={(e) => { e.stopPropagation(); removeAccount(i) }}><DeleteIcon /></IconButton>
+          </AccordionSummary>
+          <AccordionDetails>
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={3}><TextField fullWidth label="ID" value={a.id} onChange={(e) => setAccount(i, { id: e.target.value })} /></Grid>
+              <Grid item xs={12} md={3}><TextField fullWidth label="Name" value={a.name || ''} onChange={(e) => setAccount(i, { name: e.target.value })} /></Grid>
+              <Grid item xs={12} md={3}>
+                <FormControl fullWidth>
+                  <InputLabel id={`type-${i}`}>Type</InputLabel>
+                  <Select labelId={`type-${i}`} label="Type" value={a.type} onChange={(e) => setAccount(i, { type: e.target.value as Account['type'] })}>
+                    <MenuItem value="taxable-brokerage">Taxable</MenuItem>
+                    <MenuItem value="401k">401k</MenuItem>
+                    <MenuItem value="ira">IRA</MenuItem>
+                    <MenuItem value="roth">Roth</MenuItem>
+                    <MenuItem value="hsa">HSA</MenuItem>
+                    <MenuItem value="cash">Cash</MenuItem>
+                    <MenuItem value="crypto">Crypto</MenuItem>
+                    <MenuItem value="other">Other</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Cash Balance" value={a.cash_balance || 0} onChange={(e) => setAccount(i, { cash_balance: Number(e.target.value) })} /></Grid>
+            </Grid>
+            <Typography variant="subtitle2" sx={{ mt: 2 }}>Holdings</Typography>
+            <Button startIcon={<AddIcon />} size="small" sx={{ mb: 1 }} onClick={() => addHolding(i)}>Add Holding</Button>
             {(a.holdings || []).map((h, hi) => (
-              <div key={hi} className="row" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginTop: 6 }}>
-                <label>Ticker <input value={h.ticker || ''} onChange={(e) => setHolding(i, hi, { ticker: e.target.value })} /></label>
-                <label>Units <input type="number" value={h.units} onChange={(e) => setHolding(i, hi, { units: Number(e.target.value) })} /></label>
-                <label>Price <input type="number" value={h.price} onChange={(e) => setHolding(i, hi, { price: Number(e.target.value) })} /></label>
-                <div><button onClick={() => removeHolding(i, hi)}>Remove</button></div>
-              </div>
+              <Grid key={hi} container spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                <Grid item xs={12} md={4}><TextField fullWidth label="Ticker" value={h.ticker || ''} onChange={(e) => setHolding(i, hi, { ticker: e.target.value })} /></Grid>
+                <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Units" value={h.units} onChange={(e) => setHolding(i, hi, { units: Number(e.target.value) })} /></Grid>
+                <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Price" value={h.price} onChange={(e) => setHolding(i, hi, { price: Number(e.target.value) })} /></Grid>
+                <Grid item xs={12} md={2}><IconButton onClick={() => removeHolding(i, hi)}><DeleteIcon /></IconButton></Grid>
+              </Grid>
             ))}
-          </div>
-          <div style={{ marginTop: 8 }}><button onClick={() => removeAccount(i)}>Remove Account</button></div>
-        </div>
+          </AccordionDetails>
+        </Accordion>
       ))}
 
-      <h2 style={{ marginTop: 16 }}>Real Estate</h2>
-      <button onClick={addRealEstate}>Add Property</button>
+      <Typography variant="h6" sx={{ mt: 3 }}>Real Estate</Typography>
+      <Button startIcon={<AddIcon />} sx={{ mt: 1, mb: 1 }} onClick={addRealEstate}>Add Property</Button>
       {(draft.real_estate || []).map((re, i) => (
-        <div key={i} className="card" style={{ marginTop: 12 }}>
-          <div className="card-title">Property #{i + 1}</div>
-          <div className="row" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
-            <label>ID <input value={re.id} onChange={(e) => setRealEstate(i, { id: e.target.value })} /></label>
-            <label>Value <input type="number" value={re.value} onChange={(e) => setRealEstate(i, { value: Number(e.target.value) })} /></label>
-            <label>Mortgage Balance <input type="number" value={re.mortgage_balance || 0} onChange={(e) => setRealEstate(i, { mortgage_balance: Number(e.target.value) })} /></label>
-            <label>Rate <input type="number" step="0.001" value={re.rate || 0} onChange={(e) => setRealEstate(i, { rate: Number(e.target.value) })} /></label>
-            <label>Zip <input value={re.zip || ''} onChange={(e) => setRealEstate(i, { zip: e.target.value })} placeholder="e.g., 94087" /></label>
-          </div>
-          <div className="row" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginTop: 6 }}>
-            <label>Payment <input type="number" value={re.payment || 0} onChange={(e) => setRealEstate(i, { payment: Number(e.target.value) })} /></label>
-            <label>Taxes <input type="number" value={re.taxes || 0} onChange={(e) => setRealEstate(i, { taxes: Number(e.target.value) })} /></label>
-            <label>Insurance <input type="number" value={re.insurance || 0} onChange={(e) => setRealEstate(i, { insurance: Number(e.target.value) })} /></label>
-            <label>Maintenance % <input type="number" step="0.01" value={(re.maintenance_pct || 0) * 100} onChange={(e) => setRealEstate(i, { maintenance_pct: Number(e.target.value) / 100 })} /></label>
-            <label>Appreciation % <input type="number" step="0.01" value={(re.appreciation_pct || 0) * 100} onChange={(e) => setRealEstate(i, { appreciation_pct: Number(e.target.value) / 100 })} /></label>
-          </div>
-          <div style={{ marginTop: 8 }}><button onClick={() => removeRealEstate(i)}>Remove Property</button></div>
-        </div>
+        <Accordion key={i} defaultExpanded sx={{ mb: 1 }}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography sx={{ flexGrow: 1 }}>Property #{i + 1}: {re.id}</Typography>
+            <IconButton onClick={(e) => { e.stopPropagation(); removeRealEstate(i) }}><DeleteIcon /></IconButton>
+          </AccordionSummary>
+          <AccordionDetails>
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={3}><TextField fullWidth label="ID" value={re.id} onChange={(e) => setRealEstate(i, { id: e.target.value })} /></Grid>
+              <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Value" value={re.value} onChange={(e) => setRealEstate(i, { value: Number(e.target.value) })} /></Grid>
+              <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Mortgage Balance" value={re.mortgage_balance || 0} onChange={(e) => setRealEstate(i, { mortgage_balance: Number(e.target.value) })} /></Grid>
+              <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Rate" value={re.rate || 0} onChange={(e) => setRealEstate(i, { rate: Number(e.target.value) })} /></Grid>
+              <Grid item xs={12} md={3}><TextField fullWidth label="Zip" value={re.zip || ''} onChange={(e) => setRealEstate(i, { zip: e.target.value })} placeholder="e.g., 94087" /></Grid>
+              <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Payment" value={re.payment || 0} onChange={(e) => setRealEstate(i, { payment: Number(e.target.value) })} /></Grid>
+              <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Taxes (annual)" value={re.taxes || 0} onChange={(e) => setRealEstate(i, { taxes: Number(e.target.value) })} /></Grid>
+              <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Insurance (annual)" value={re.insurance || 0} onChange={(e) => setRealEstate(i, { insurance: Number(e.target.value) })} /></Grid>
+              <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Maintenance %" value={((re.maintenance_pct || 0) * 100).toString()} onChange={(e) => setRealEstate(i, { maintenance_pct: Number(e.target.value) / 100 })} /></Grid>
+              <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Appreciation %" value={((re.appreciation_pct || 0) * 100).toString()} onChange={(e) => setRealEstate(i, { appreciation_pct: Number(e.target.value) / 100 })} /></Grid>
+            </Grid>
+            <Typography variant="subtitle2" sx={{ mt: 2 }}>Rental (optional)</Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Rent (monthly)" value={re.rental?.rent || 0} onChange={(e) => setRealEstate(i, { rental: { ...(re.rental || {}), rent: Number(e.target.value) } as any })} /></Grid>
+              <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Vacancy %" value={((re.rental?.vacancy_pct || 0) * 100).toString()} onChange={(e) => setRealEstate(i, { rental: { ...(re.rental || {}), vacancy_pct: Number(e.target.value) / 100 } as any })} /></Grid>
+              <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Expenses (monthly)" value={re.rental?.expenses || 0} onChange={(e) => setRealEstate(i, { rental: { ...(re.rental || {}), expenses: Number(e.target.value) } as any })} /></Grid>
+            </Grid>
+          </AccordionDetails>
+        </Accordion>
       ))}
 
-      <h2 style={{ marginTop: 16 }}>Contributions</h2>
-      <button onClick={addContribution}>Add Contribution</button>
+      <Typography variant="h6" sx={{ mt: 3 }}>Contributions</Typography>
+      <Button startIcon={<AddIcon />} sx={{ mt: 1, mb: 1 }} onClick={addContribution}>Add Contribution</Button>
       {(draft.contributions || []).map((c, i) => (
-        <div key={i} className="row" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginTop: 6 }}>
-          <label>Account ID <input value={c.account_id} onChange={(e) => setContribution(i, { account_id: e.target.value })} /></label>
-          <label>Amount <input type="number" value={c.amount} onChange={(e) => setContribution(i, { amount: Number(e.target.value) })} /></label>
-          <label>Frequency
-            <select value={c.frequency} onChange={(e) => setContribution(i, { frequency: e.target.value as any })}>
-              <option value="once">Once</option>
-              <option value="monthly">Monthly</option>
-              <option value="annual">Annual</option>
-            </select>
-          </label>
-          <label>Start <input type="date" value={c.start || ''} onChange={(e) => setContribution(i, { start: e.target.value || undefined })} /></label>
-          <label>End <input type="date" value={c.end || ''} onChange={(e) => setContribution(i, { end: e.target.value || undefined })} /></label>
-          <div><button onClick={() => removeContribution(i)}>Remove</button></div>
-        </div>
+        <Grid key={i} container spacing={1} alignItems="center" sx={{ mb: 1 }}>
+          <Grid item xs={12} md={3}><TextField fullWidth label="Account ID" value={c.account_id} onChange={(e) => setContribution(i, { account_id: e.target.value })} /></Grid>
+          <Grid item xs={12} md={2}><TextField type="number" fullWidth label="Amount" value={c.amount} onChange={(e) => setContribution(i, { amount: Number(e.target.value) })} /></Grid>
+          <Grid item xs={12} md={2}>
+            <FormControl fullWidth>
+              <InputLabel id={`freq-c-${i}`}>Frequency</InputLabel>
+              <Select labelId={`freq-c-${i}`} label="Frequency" value={c.frequency} onChange={(e) => setContribution(i, { frequency: e.target.value as any })}>
+                <MenuItem value="once">Once</MenuItem>
+                <MenuItem value="monthly">Monthly</MenuItem>
+                <MenuItem value="annual">Annual</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={2}><TextField type="date" fullWidth label="Start" InputLabelProps={{ shrink: true }} value={c.start || ''} onChange={(e) => setContribution(i, { start: e.target.value || undefined })} /></Grid>
+          <Grid item xs={12} md={2}><TextField type="date" fullWidth label="End" InputLabelProps={{ shrink: true }} value={c.end || ''} onChange={(e) => setContribution(i, { end: e.target.value || undefined })} /></Grid>
+          <Grid item xs={12} md={1}><IconButton onClick={() => removeContribution(i)}><DeleteIcon /></IconButton></Grid>
+        </Grid>
       ))}
 
-      <h2 style={{ marginTop: 16 }}>Expenses</h2>
-      <button onClick={addExpense}>Add Expense</button>
+      <Typography variant="h6" sx={{ mt: 3 }}>Expenses</Typography>
+      <Button startIcon={<AddIcon />} sx={{ mt: 1, mb: 1 }} onClick={addExpense}>Add Expense</Button>
       {(draft.expenses || []).map((e, i) => (
-        <div key={i} className="row" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginTop: 6 }}>
-          <label>Amount <input type="number" value={e.amount} onChange={(ev) => setExpense(i, { amount: Number(ev.target.value) })} /></label>
-          <label>Frequency
-            <select value={e.frequency} onChange={(ev) => setExpense(i, { frequency: ev.target.value as any })}>
-              <option value="once">Once</option>
-              <option value="monthly">Monthly</option>
-              <option value="annual">Annual</option>
-            </select>
-          </label>
-          <label>Start <input type="date" value={e.start || ''} onChange={(ev) => setExpense(i, { start: ev.target.value || undefined })} /></label>
-          <label>End <input type="date" value={e.end || ''} onChange={(ev) => setExpense(i, { end: ev.target.value || undefined })} /></label>
-          <label>Category <input value={e.category || ''} onChange={(ev) => setExpense(i, { category: ev.target.value || undefined })} /></label>
-          <div><button onClick={() => removeExpense(i)}>Remove</button></div>
-        </div>
+        <Grid key={i} container spacing={1} alignItems="center" sx={{ mb: 1 }}>
+          <Grid item xs={12} md={2}><TextField type="number" fullWidth label="Amount" value={e.amount} onChange={(ev) => setExpense(i, { amount: Number(ev.target.value) })} /></Grid>
+          <Grid item xs={12} md={2}>
+            <FormControl fullWidth>
+              <InputLabel id={`freq-e-${i}`}>Frequency</InputLabel>
+              <Select labelId={`freq-e-${i}`} label="Frequency" value={e.frequency} onChange={(ev) => setExpense(i, { frequency: ev.target.value as any })}>
+                <MenuItem value="once">Once</MenuItem>
+                <MenuItem value="monthly">Monthly</MenuItem>
+                <MenuItem value="annual">Annual</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid item xs={12} md={2}><TextField type="date" fullWidth label="Start" InputLabelProps={{ shrink: true }} value={e.start || ''} onChange={(ev) => setExpense(i, { start: ev.target.value || undefined })} /></Grid>
+          <Grid item xs={12} md={2}><TextField type="date" fullWidth label="End" InputLabelProps={{ shrink: true }} value={e.end || ''} onChange={(ev) => setExpense(i, { end: ev.target.value || undefined })} /></Grid>
+          <Grid item xs={12} md={3}><TextField fullWidth label="Category" value={e.category || ''} onChange={(ev) => setExpense(i, { category: ev.target.value || undefined })} /></Grid>
+          <Grid item xs={12} md={1}><IconButton onClick={() => removeExpense(i)}><DeleteIcon /></IconButton></Grid>
+        </Grid>
       ))}
 
-      <h2 style={{ marginTop: 16 }}>Social Security</h2>
-      <button onClick={addSS}>Add Claim</button>
+      <Typography variant="h6" sx={{ mt: 3 }}>Social Security</Typography>
+      <Button startIcon={<AddIcon />} sx={{ mt: 1, mb: 1 }} onClick={addSS}>Add Claim</Button>
       {(draft.social_security || []).map((s, i) => (
-        <div key={i} className="row" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginTop: 6 }}>
-          <label>Claim Age <input type="number" value={s.claim_age} onChange={(e) => setSS(i, { claim_age: Number(e.target.value) })} /></label>
-          <label>Monthly Amount <input type="number" value={s.monthly_amount} onChange={(e) => setSS(i, { monthly_amount: Number(e.target.value) })} /></label>
-          <label>COLA % <input type="number" step="0.01" value={(s.COLA ?? 0) * 100} onChange={(e) => setSS(i, { COLA: Number(e.target.value) / 100 })} /></label>
-          <div><button onClick={() => removeSS(i)}>Remove</button></div>
-        </div>
+        <Grid key={i} container spacing={1} alignItems="center" sx={{ mb: 1 }}>
+          <Grid item xs={12} md={2}><TextField type="number" fullWidth label="Claim Age" value={s.claim_age} onChange={(e) => setSS(i, { claim_age: Number(e.target.value) })} /></Grid>
+          <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Monthly Amount" value={s.monthly_amount} onChange={(e) => setSS(i, { monthly_amount: Number(e.target.value) })} /></Grid>
+          <Grid item xs={12} md={2}><TextField type="number" fullWidth label="COLA %" value={((s.COLA ?? 0) * 100).toString()} onChange={(e) => setSS(i, { COLA: Number(e.target.value) / 100 })} /></Grid>
+          <Grid item xs={12} md={1}><IconButton onClick={() => removeSS(i)}><DeleteIcon /></IconButton></Grid>
+        </Grid>
       ))}
 
       <Grid container spacing={1} sx={{ mt: 2 }}>
