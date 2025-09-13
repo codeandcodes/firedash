@@ -1,4 +1,4 @@
-export type AssetClass = 'US_STOCK' | 'INTL_STOCK' | 'BONDS' | 'REIT' | 'CASH'
+export type AssetClass = 'US_STOCK' | 'INTL_STOCK' | 'BONDS' | 'REIT' | 'CASH' | 'REAL_ESTATE'
 
 export interface ReturnParams {
   mu: number // annualized arithmetic mean return (approx)
@@ -24,4 +24,3 @@ export interface MonteSummary {
   p10Terminal: number
   p90Terminal: number
 }
-

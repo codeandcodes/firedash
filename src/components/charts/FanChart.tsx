@@ -15,9 +15,10 @@ export interface FanChartProps {
   years?: number
   title?: string
   startYear?: number
+  retAt?: number
 }
 
-export const FanChart: React.FC<FanChartProps> = ({ p10, p25, p50, p75, p90, width = 800, height = 300, years, title, startYear }) => {
+export const FanChart: React.FC<FanChartProps> = ({ p10, p25, p50, p75, p90, width = 800, height = 300, years, title, startYear, retAt }) => {
   const months = p50.length
   const maxY = Math.max(...p90)
   const padLeft = 48
@@ -47,7 +48,14 @@ export const FanChart: React.FC<FanChartProps> = ({ p10, p25, p50, p75, p90, wid
   }, [hoverI, months, p50])
 
   const yearsCount = years ?? Math.max(1, Math.round(months / 12))
-  const xTicks = new Array(yearsCount + 1).fill(0).map((_, i) => ({ i: Math.min(months - 1, Math.round((i / yearsCount) * (months - 1))), label: startYear ? String(startYear + i) : String(i) }))
+  const maxTicks = Math.max(2, Math.min(10, Math.round(innerW / 80)))
+  const step = Math.max(1, Math.ceil(yearsCount / maxTicks))
+  const ticksArr = [] as { i: number; label: string }[]
+  for (let yi = 0; yi <= yearsCount; yi += step) {
+    const xi = Math.min(months - 1, Math.round((yi / yearsCount) * (months - 1)))
+    ticksArr.push({ i: xi, label: startYear ? String(startYear + yi) : String(yi) })
+  }
+  const xTicks = ticksArr
   const yTicks = [0, 0.25, 0.5, 0.75, 1].map((t) => ({ v: t * maxY, label: formatCurrency(t * maxY) }))
 
   return (
@@ -76,6 +84,14 @@ export const FanChart: React.FC<FanChartProps> = ({ p10, p25, p50, p75, p90, wid
         <path d={areaPath(p75, p25)} fill="#7aa2f755" stroke="none" />
         <path d={linePath(p50)} fill="none" stroke="#7aa2f7" strokeWidth={2} />
       </g>
+
+      {/* Retirement marker */}
+      {typeof retAt === 'number' && retAt >= 0 && (
+        <g>
+          <line x1={x(Math.min(months-1, retAt))} x2={x(Math.min(months-1, retAt))} y1={padTop} y2={H - padBottom} stroke="#f5a97f" strokeDasharray="6 3" />
+          <text x={x(Math.min(months-1, retAt)) + 6} y={padTop + 12} fill="#f5a97f" fontSize={10}>Retirement</text>
+        </g>
+      )}
 
       {/* Axes labels and legend */}
       <g fill="#9aa4b2" fontSize="10">

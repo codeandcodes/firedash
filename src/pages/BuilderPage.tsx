@@ -66,7 +66,7 @@ export function BuilderPage() {
 
   // Real estate
   function addRealEstate() {
-    const re: RealEstate = { id: `prop-${(draft.real_estate?.length || 0) + 1}`, value: 0 }
+    const re: RealEstate = { id: `prop-${(draft.real_estate?.length || 0) + 1}`, value: 0, appreciation_pct: 0.035 }
     update('real_estate', [ ...(draft.real_estate || []), re ])
   }
   function setRealEstate(idx: number, patch: Partial<RealEstate>) {
@@ -268,17 +268,19 @@ export function BuilderPage() {
       {(draft.real_estate || []).map((re, i) => (
         <div key={i} className="card" style={{ marginTop: 12 }}>
           <div className="card-title">Property #{i + 1}</div>
-          <div className="row" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+          <div className="row" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
             <label>ID <input value={re.id} onChange={(e) => setRealEstate(i, { id: e.target.value })} /></label>
             <label>Value <input type="number" value={re.value} onChange={(e) => setRealEstate(i, { value: Number(e.target.value) })} /></label>
             <label>Mortgage Balance <input type="number" value={re.mortgage_balance || 0} onChange={(e) => setRealEstate(i, { mortgage_balance: Number(e.target.value) })} /></label>
             <label>Rate <input type="number" step="0.001" value={re.rate || 0} onChange={(e) => setRealEstate(i, { rate: Number(e.target.value) })} /></label>
+            <label>Zip <input value={re.zip || ''} onChange={(e) => setRealEstate(i, { zip: e.target.value })} placeholder="e.g., 94087" /></label>
           </div>
-          <div className="row" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginTop: 6 }}>
+          <div className="row" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginTop: 6 }}>
             <label>Payment <input type="number" value={re.payment || 0} onChange={(e) => setRealEstate(i, { payment: Number(e.target.value) })} /></label>
             <label>Taxes <input type="number" value={re.taxes || 0} onChange={(e) => setRealEstate(i, { taxes: Number(e.target.value) })} /></label>
             <label>Insurance <input type="number" value={re.insurance || 0} onChange={(e) => setRealEstate(i, { insurance: Number(e.target.value) })} /></label>
             <label>Maintenance % <input type="number" step="0.01" value={(re.maintenance_pct || 0) * 100} onChange={(e) => setRealEstate(i, { maintenance_pct: Number(e.target.value) / 100 })} /></label>
+            <label>Appreciation % <input type="number" step="0.01" value={(re.appreciation_pct || 0) * 100} onChange={(e) => setRealEstate(i, { appreciation_pct: Number(e.target.value) / 100 })} /></label>
           </div>
           <div style={{ marginTop: 8 }}><button onClick={() => removeRealEstate(i)}>Remove Property</button></div>
         </div>

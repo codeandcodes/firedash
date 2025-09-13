@@ -6,10 +6,11 @@ const COLORS: Record<AssetClass, string> = {
   INTL_STOCK: '#91d7e3',
   BONDS: '#a6da95',
   REIT: '#f5a97f',
-  CASH: '#eed49f'
+  CASH: '#eed49f',
+  REAL_ESTATE: '#c6a0f6'
 }
 
-export const StackedArea: React.FC<{ byClass: Record<AssetClass, number[]>; width?: number; height?: number; years?: number; startYear?: number }> = ({ byClass, width = 800, height = 300, years, startYear }) => {
+export const StackedArea: React.FC<{ byClass: Record<AssetClass, number[]>; width?: number; height?: number; years?: number; startYear?: number; retAt?: number }> = ({ byClass, width = 800, height = 300, years, startYear, retAt }) => {
   const keys = Object.keys(byClass) as AssetClass[]
   const months = byClass[keys[0]].length
   const totals = new Array<number>(months).fill(0)
@@ -58,19 +59,41 @@ export const StackedArea: React.FC<{ byClass: Record<AssetClass, number[]>; widt
       {/* Gridlines */}
       <g stroke="#1f2940" strokeWidth={1} opacity={0.9}>
         {[0,0.25,0.5,0.75,1].map((t, idx) => (<line key={idx} x1={padLeft} x2={W - padRight} y1={y(t*maxY)} y2={y(t*maxY)} />))}
-        {new Array(Math.max(1, Math.round(months/12))+1).fill(0).map((_, i) => {
-          const xi = Math.min(months-1, Math.round((i/Math.max(1, Math.round(months/12))) * (months-1)))
-          return <line key={i} y1={padTop} y2={H - padBottom} x1={x(xi)} x2={x(xi)} />
-        })}
+        {(() => {
+          const yrs = years ?? Math.max(1, Math.round(months/12))
+          const maxTicks = Math.max(2, Math.min(10, Math.round((W - padLeft - padRight) / 80)))
+          const step = Math.max(1, Math.ceil(yrs / maxTicks))
+          const arr = [] as JSX.Element[]
+          for (let yi = 0; yi <= yrs; yi += step) {
+            const xi = Math.min(months-1, Math.round((yi/yrs) * (months-1)))
+            arr.push(<line key={yi} y1={padTop} y2={H - padBottom} x1={x(xi)} x2={x(xi)} />)
+          }
+          return arr
+        })()}
       </g>
       {/* X-axis labels */}
       <g fill="#9aa4b2" fontSize={10}>
-        {new Array(Math.max(1, Math.round(months/12))+1).fill(0).map((_, i) => {
-          const xi = Math.min(months-1, Math.round((i/Math.max(1, Math.round(months/12))) * (months-1)))
-          const label = startYear ? String(startYear + i) : String(i)
-          return <text key={i} x={x(xi)} y={H - 6} textAnchor="middle">{label}</text>
-        })}
+        {(() => {
+          const yrs = years ?? Math.max(1, Math.round(months/12))
+          const maxTicks = Math.max(2, Math.min(10, Math.round((W - padLeft - padRight) / 80)))
+          const step = Math.max(1, Math.ceil(yrs / maxTicks))
+          const arr = [] as JSX.Element[]
+          for (let yi = 0; yi <= yrs; yi += step) {
+            const xi = Math.min(months-1, Math.round((yi/yrs) * (months-1)))
+            const label = startYear ? String(startYear + yi) : String(yi)
+            arr.push(<text key={yi} x={x(xi)} y={H - 6} textAnchor="middle">{label}</text>)
+          }
+          return arr
+        })()}
       </g>
+
+      {/* Retirement marker */}
+      {typeof retAt === 'number' && retAt >= 0 && (
+        <g>
+          <line x1={x(Math.min(months-1, retAt))} x2={x(Math.min(months-1, retAt))} y1={padTop} y2={H - padBottom} stroke="#f5a97f" strokeDasharray="6 3" />
+          <text x={x(Math.min(months-1, retAt)) + 6} y={padTop + 12} fill="#f5a97f" fontSize={10}>Retirement</text>
+        </g>
+      )}
       <g>{layers}</g>
       {/* Legend */}
       <g transform={`translate(${W - 220}, ${padTop + 8})`} fontSize={10} fill="#c8d3e6">

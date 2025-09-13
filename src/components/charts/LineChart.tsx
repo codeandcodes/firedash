@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
 
-export const LineChart: React.FC<{ series: number[]; width?: number; height?: number; color?: string; label?: string; years?: number; startYear?: number }> = ({ series, width = 800, height = 240, color = '#a6da95', label, years, startYear }) => {
+export const LineChart: React.FC<{ series: number[]; width?: number; height?: number; color?: string; label?: string; years?: number; startYear?: number; retAt?: number }> = ({ series, width = 800, height = 240, color = '#a6da95', label, years, startYear, retAt }) => {
   const maxY = Math.max(...series)
   const padLeft = 48
   const padBottom = 28
@@ -22,7 +22,13 @@ export const LineChart: React.FC<{ series: number[]; width?: number; height?: nu
   }, [hoverI, months, series])
 
   const yearsCount = years ?? Math.max(1, Math.round(months / 12))
-  const xTicks = new Array(yearsCount + 1).fill(0).map((_, i) => ({ i: Math.min(months - 1, Math.round((i / yearsCount) * (months - 1))), label: startYear ? String(startYear + i) : String(i) }))
+  const maxTicks = Math.max(2, Math.min(10, Math.round(innerW / 80)))
+  const step = Math.max(1, Math.ceil(yearsCount / maxTicks))
+  const xTicks = [] as { i: number; label: string }[]
+  for (let yi = 0; yi <= yearsCount; yi += step) {
+    const xi = Math.min(months - 1, Math.round((yi / yearsCount) * (months - 1)))
+    xTicks.push({ i: xi, label: startYear ? String(startYear + yi) : String(yi) })
+  }
   const yTicks = [0, 0.25, 0.5, 0.75, 1].map((t) => ({ v: t * maxY, label: `$${Math.round(t * maxY).toLocaleString()}` }))
 
   return (
@@ -40,6 +46,12 @@ export const LineChart: React.FC<{ series: number[]; width?: number; height?: nu
         {xTicks.map((t, idx) => (<line key={idx} y1={padTop} y2={H - padBottom} x1={x(t.i)} x2={x(t.i)} />))}
       </g>
       <path d={path} fill="none" stroke={color} strokeWidth={2} />
+      {typeof retAt === 'number' && retAt >= 0 && (
+        <g>
+          <line x1={x(Math.min(months-1, retAt))} x2={x(Math.min(months-1, retAt))} y1={padTop} y2={H - padBottom} stroke="#f5a97f" strokeDasharray="6 3" />
+          <text x={x(Math.min(months-1, retAt)) + 6} y={padTop + 12} fill="#f5a97f" fontSize={10}>Retirement</text>
+        </g>
+      )}
       <g fill="#9aa4b2" fontSize="10">
         {xTicks.map((t, idx) => (<text key={idx} x={x(t.i)} y={H - 6} textAnchor="middle">{t.label}</text>))}
         <text x={W / 2} y={14} textAnchor="middle" fill="#c8d3e6">{label || 'Balance over time'}</text>

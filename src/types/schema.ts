@@ -43,6 +43,8 @@ export interface RealEstate {
   maintenance_pct?: number
   rental?: RentalInfo
   sale_plan?: { year: number; costs_pct?: number }
+  zip?: string
+  appreciation_pct?: number
 }
 
 export type Frequency = 'once' | 'monthly' | 'annual'

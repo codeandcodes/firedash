@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react'
 
-export const YearlyPercentileTable: React.FC<{ months: number; p10: number[]; p25: number[]; p50: number[]; p75: number[]; p90: number[]; startYear?: number }>
-  = ({ months, p10, p25, p50, p75, p90, startYear }) => {
+export const YearlyPercentileTable: React.FC<{ months: number; p10: number[]; p25: number[]; p50: number[]; p75: number[]; p90: number[]; startYear?: number; highlightYear?: number }>
+  = ({ months, p10, p25, p50, p75, p90, startYear, highlightYear }) => {
   const years = Math.max(1, Math.floor(months / 12))
   const rows = useMemo(() => {
     const r: { year: number; p10: number; p25: number; p50: number; p75: number; p90: number }[] = []
@@ -28,7 +28,7 @@ export const YearlyPercentileTable: React.FC<{ months: number; p10: number[]; p2
       </thead>
       <tbody>
         {rows.map((r) => (
-          <tr key={r.year}>
+          <tr key={r.year} style={{ background: highlightYear && r.year === highlightYear ? '#1a2340' : undefined }}>
             <td>{r.year}</td>
             <td>{fmt(r.p10)}</td>
             <td>{fmt(r.p25)}</td>

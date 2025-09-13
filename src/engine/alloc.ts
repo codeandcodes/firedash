@@ -6,7 +6,8 @@ export const DEFAULT_RETURNS: Record<AssetClass, ReturnParams> = {
   INTL_STOCK: { mu: 0.065, sigma: 0.2 },
   BONDS: { mu: 0.03, sigma: 0.07 },
   REIT: { mu: 0.065, sigma: 0.2 },
-  CASH: { mu: 0.015, sigma: 0.01 }
+  CASH: { mu: 0.015, sigma: 0.01 },
+  REAL_ESTATE: { mu: 0.03, sigma: 0.12 }
 }
 
 export function classifyHolding(h: HoldingLot): AssetClass {
@@ -24,7 +25,7 @@ export interface Allocation {
 }
 
 export function computeAllocation(snapshot: Snapshot): Allocation {
-  const sums: Record<AssetClass, number> = { US_STOCK: 0, INTL_STOCK: 0, BONDS: 0, REIT: 0, CASH: 0 }
+  const sums: Record<AssetClass, number> = { US_STOCK: 0, INTL_STOCK: 0, BONDS: 0, REIT: 0, CASH: 0, REAL_ESTATE: 0 }
   for (const a of snapshot.accounts) {
     if (a.cash_balance) sums.CASH += a.cash_balance
     for (const h of a.holdings || []) {
@@ -32,11 +33,13 @@ export function computeAllocation(snapshot: Snapshot): Allocation {
       sums[classifyHolding(h)] += v
     }
   }
+  for (const re of snapshot.real_estate || []) {
+    if (re.value) sums.REAL_ESTATE += re.value
+  }
   const total = Object.values(sums).reduce((s, x) => s + x, 0)
-  const weights: Record<AssetClass, number> = { US_STOCK: 0, INTL_STOCK: 0, BONDS: 0, REIT: 0, CASH: 0 }
+  const weights: Record<AssetClass, number> = { US_STOCK: 0, INTL_STOCK: 0, BONDS: 0, REIT: 0, CASH: 0, REAL_ESTATE: 0 }
   if (total > 0) {
     (Object.keys(sums) as AssetClass[]).forEach((k) => (weights[k] = sums[k] / total))
   }
   return { weights, total }
 }
-

@@ -19,7 +19,7 @@ export function PortfolioSnapshotPage() {
     s + (a.holdings || []).reduce((h, lot) => h + lot.units * lot.price, 0), 0)
   const total = totalCash + totalHoldings
   const alloc = computeAllocation(snapshot)
-  const COLORS: Record<string, string> = { US_STOCK: '#7aa2f7', INTL_STOCK: '#91d7e3', BONDS: '#a6da95', REIT: '#f5a97f', CASH: '#eed49f' }
+  const COLORS: Record<string, string> = { US_STOCK: '#7aa2f7', INTL_STOCK: '#91d7e3', BONDS: '#a6da95', REIT: '#f5a97f', CASH: '#eed49f', REAL_ESTATE: '#c6a0f6' }
   const pieData = Object.entries(alloc.weights).map(([k, w]) => ({ label: k, value: w, color: COLORS[k] || '#888' }))
 
   return (

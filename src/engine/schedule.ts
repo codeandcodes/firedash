@@ -9,6 +9,7 @@ export interface Timeline {
   months: number
   retirementAt?: number // month index
   cashflows: CashFlow[]
+  rentalNetMonthly?: number
 }
 
 function monthsBetween(startISO: string, years: number): number {
@@ -67,6 +68,20 @@ export function buildTimeline(snapshot: Snapshot, years: number): Timeline {
     const deltaYears = Math.max(0, (snapshot.retirement.target_age as number) - (snapshot.person.current_age as number))
     retirementAt = Math.round(deltaYears * 12)
   }
+  // Rental net flows (rough): rent*(1-vacancy) - expenses - taxes/12 - insurance/12 - maintenance*value/12 - payment
+  let rentalNetMonthly = 0
+  for (const re of snapshot.real_estate || []) {
+    if (re.rental) {
+      const rent = re.rental.rent || 0
+      const vacancy = re.rental.vacancy_pct || 0
+      const rexp = re.rental.expenses || 0
+      const taxes = re.taxes || 0
+      const ins = re.insurance || 0
+      const maint = (re.maintenance_pct || 0) * (re.value || 0)
+      const payment = re.payment || 0
+      rentalNetMonthly += (rent * (1 - vacancy)) - rexp - taxes/12 - ins/12 - maint/12 - payment
+    }
+  }
 
-  return { months: totalMonths, retirementAt, cashflows: flows.sort((a, b) => a.monthIndex - b.monthIndex) }
+  return { months: totalMonths, retirementAt, cashflows: flows.sort((a, b) => a.monthIndex - b.monthIndex), rentalNetMonthly }
 }
