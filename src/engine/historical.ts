@@ -96,3 +96,9 @@ function randn(): number {
   while (v === 0) v = Math.random()
   return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v)
 }
+/*
+Historical block bootstrap sampler.
+- Loads bundled data/historical_returns.json (monthly rows) at build time.
+- createBootstrapSampler(): samples contiguous blocks across all assets to retain cross-asset co-movement.
+- Detects annual-expanded data (flat within year) and adjusts: year-aligned blocks and higher monthly noise.
+*/

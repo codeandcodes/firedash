@@ -38,3 +38,7 @@ export function useApp(): AppState {
   if (!ctx) throw new Error('useApp must be used within AppProvider')
   return ctx
 }
+/*
+Global app context: holds current snapshot and simulation options.
+- simOptions now includes mcMode to control Monte Carlo engine.
+*/

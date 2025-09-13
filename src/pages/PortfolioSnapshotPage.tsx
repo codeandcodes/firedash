@@ -133,3 +133,8 @@ export function PortfolioSnapshotPage() {
     </section>
   )
 }
+/*
+Portfolio Snapshot page.
+- Shows timestamp, KPI cards, global allocation pie, and per-account pies with holdings tables.
+- Values are rounded and right-aligned for readability.
+*/

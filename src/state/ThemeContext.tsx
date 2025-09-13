@@ -46,3 +46,7 @@ export function useThemeMode() {
   if (!c) throw new Error('useThemeMode must be used within AppThemeProvider')
   return c
 }
+/*
+Theme provider with light/dark toggle.
+- Only sets palette.background in dark mode to avoid undefined in light mode.
+*/

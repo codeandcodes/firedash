@@ -404,3 +404,8 @@ export function BuilderPage() {
     </section>
   )
 }
+/*
+Snapshot Builder page.
+- Import Monarch JSON; edit General/Retirement; manage Accounts/Holdings; Real Estate (with estimate helper), Contributions, Expenses, Social Security.
+- Inline validation and tooltips for clarity; actions to load/download snapshot.
+*/

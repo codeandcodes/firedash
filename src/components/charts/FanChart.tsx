@@ -132,3 +132,7 @@ export const FanChart: React.FC<FanChartProps> = ({ p10, p25, p50, p75, p90, wid
     </svg>
   )
 }
+/*
+FanChart (SVG) – draws percentile bands (P10/P25) and median line.
+Includes axes, gridlines, legend, tooltip, and optional retirement marker.
+*/

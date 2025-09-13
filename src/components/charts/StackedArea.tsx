@@ -112,3 +112,7 @@ export const StackedArea: React.FC<{ byClass: Record<AssetClass, number[]>; widt
     </svg>
   )
 }
+/*
+StackedArea (SVG) – deterministic by-class balance over time.
+Draws stacked layers with legend, axes, grid, and optional retirement marker.
+*/

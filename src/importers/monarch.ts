@@ -156,3 +156,9 @@ export function importMonarchFromString(raw: string): ImportResult {
   }
   return importMonarchInvestments(wrapped)
 }
+/*
+Monarch investments importer (GraphQL aggregate holdings).
+- Groups positions by holding.account; institutionless → synthetic 'Other'.
+- Crypto under non-crypto → synthetic '(Crypto)' account to avoid mixing.
+- Price selection prefers fresher security.currentPrice over stale holding closingPrice.
+*/

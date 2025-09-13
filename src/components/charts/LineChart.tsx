@@ -70,3 +70,6 @@ export const LineChart: React.FC<{ series: number[]; width?: number; height?: nu
     </svg>
   )
 }
+/*
+LineChart (SVG) – renders a single series with axes, grid, tooltip line, and optional retirement marker.
+*/

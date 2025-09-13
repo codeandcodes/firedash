@@ -94,3 +94,8 @@ export const ScenarioOptions: React.FC = () => {
     </Card>
   )
 }
+/*
+Scenario Options panel.
+- Controls years, paths, rebalancing, inflation, and MC mode.
+- Bootstrap mode exposes Block (months) and Noise σ controls (currently wired via window for minimal plumbing).
+*/

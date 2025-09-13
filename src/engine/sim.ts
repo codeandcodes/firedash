@@ -360,3 +360,13 @@ function createRegimeSampler() {
     }
   }
 }
+/*
+Core simulation loop for deterministic and Monte Carlo paths.
+Key exports:
+- simulate(): Monte Carlo summary + path stats; supports mcMode ('bootstrap'|'regime'|'gbm').
+- simulateDeterministic(): fixed real returns approximation.
+- simulateSeries(): deterministic by-class series and MC percentiles for charts.
+Implementation notes:
+- zeroBalances() & dynamic byClass allocation prevent NaNs when adding assets.
+- Regime sampler models persistent downturns; Bootstrap sampler preserves historical sequences.
+*/

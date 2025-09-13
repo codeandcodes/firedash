@@ -85,3 +85,9 @@ export function buildTimeline(snapshot: Snapshot, years: number): Timeline {
 
   return { months: totalMonths, retirementAt, cashflows: flows.sort((a, b) => a.monthIndex - b.monthIndex), rentalNetMonthly }
 }
+/*
+Monthly cashflow schedule builder.
+- Aggregates contributions/expenses into month-indexed cashflows over N years.
+- Computes rental net monthly from real estate entries.
+- Derives retirementAt month from target_date or (target_age - current_age).
+*/
