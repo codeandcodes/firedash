@@ -20,7 +20,7 @@ export const FileUpload: React.FC = () => {
         return
       }
       setSnapshot(json)
-      navigate('/snapshot')
+      navigate('/builder')
     } catch (e: any) {
       setErrors([`Failed to parse: ${e.message}`])
     }
@@ -54,4 +54,3 @@ export const FileUpload: React.FC = () => {
     </div>
   )
 }
-

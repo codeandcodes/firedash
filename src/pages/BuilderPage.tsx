@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '@state/AppContext'
 import type { Snapshot, Account, HoldingLot, RealEstate, Contribution, Expense, SocialSecurity, Assumptions } from '@types/schema'
@@ -25,10 +25,18 @@ const emptySnapshot: Snapshot = {
 export function BuilderPage() {
   const [draft, setDraft] = useState<Snapshot>({ ...emptySnapshot })
   const [errors, setErrors] = useState<string[]>([])
-  const { setSnapshot } = useApp()
+  const { setSnapshot, snapshot } = useApp()
   const nav = useNavigate()
 
   const pretty = useMemo(() => JSON.stringify(draft, null, 2), [draft])
+
+  // Prefill from current snapshot if available and builder is empty
+  useEffect(() => {
+    if (snapshot && (!draft.accounts?.length && !draft.real_estate?.length)) {
+      setDraft(snapshot)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [snapshot])
 
   function update<K extends keyof Snapshot>(key: K, val: Snapshot[K]) {
     setDraft((d) => ({ ...d, [key]: val }))
@@ -337,6 +345,7 @@ export function BuilderPage() {
 
       <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
         <button onClick={() => setDraft({ ...emptySnapshot, timestamp: nowIso() })}>Reset</button>
+        {snapshot && <button onClick={() => setDraft(snapshot)}>Load From Current</button>}
         <button onClick={prefillSample}>Prefill Sample</button>
         <button onClick={loadIntoApp}>Load Into App</button>
         <button onClick={download}>Download JSON</button>

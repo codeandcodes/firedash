@@ -19,7 +19,7 @@ export const PieChart: React.FC<{ data: { label: string; value: number; color: s
       <rect x={0} y={0} width={width} height={height} fill="#101626" rx={8} />
       {title && <text x={width/2} y={16} textAnchor="middle" fill="#c8d3e6" fontSize={12}>{title}</text>}
       <g>
-        {arcs.map((a, i) => (<path key={i} d={a.path} fill={a.color} opacity={0.85} />))}
+        {arcs.map((a, i) => (<path key={i} d={a.path} fill={a.color} opacity={0.85} stroke="#0b1020" strokeWidth={1} />))}
       </g>
       <g transform={`translate(${width - 140}, 24)`} fontSize={10} fill="#c8d3e6">
         <rect x={0} y={-8} width={132} height={data.length*16 + 16} fill="#0b1020" stroke="#1f2940" rx={6} />
@@ -35,4 +35,3 @@ export const PieChart: React.FC<{ data: { label: string; value: number; color: s
     </svg>
   )
 }
-

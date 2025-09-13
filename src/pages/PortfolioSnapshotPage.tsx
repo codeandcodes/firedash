@@ -1,5 +1,5 @@
 import { useApp } from '@state/AppContext'
-import { computeAllocation } from '@engine/alloc'
+import { computeAllocation, classifyHolding } from '@engine/alloc'
 import { PieChart } from '@components/charts/PieChart'
 
 export function PortfolioSnapshotPage() {
@@ -20,7 +20,18 @@ export function PortfolioSnapshotPage() {
   const total = totalCash + totalHoldings
   const alloc = computeAllocation(snapshot)
   const COLORS: Record<string, string> = { US_STOCK: '#7aa2f7', INTL_STOCK: '#91d7e3', BONDS: '#a6da95', REIT: '#f5a97f', CASH: '#eed49f', REAL_ESTATE: '#c6a0f6' }
-  const pieData = Object.entries(alloc.weights).map(([k, w]) => ({ label: k, value: w, color: COLORS[k] || '#888' }))
+  // Use absolute dollars for global pie to avoid tiny slices rounding away
+  const globalSums: Record<string, number> = { US_STOCK: 0, INTL_STOCK: 0, BONDS: 0, REIT: 0, CASH: 0, REAL_ESTATE: 0 }
+  for (const a of snapshot.accounts) {
+    if (a.cash_balance) globalSums.CASH += a.cash_balance
+    for (const h of a.holdings || []) {
+      const v = h.units * h.price
+      const k = classifyHolding(h)
+      globalSums[k] += v
+    }
+  }
+  for (const re of snapshot.real_estate || []) globalSums.REAL_ESTATE += re.value || 0
+  const pieData = Object.entries(globalSums).filter(([, v]) => v > 0).map(([k, v]) => ({ label: k, value: v, color: COLORS[k] || '#888' }))
 
   return (
     <section>
@@ -67,6 +78,62 @@ export function PortfolioSnapshotPage() {
           })}
         </tbody>
       </table>
+
+      {snapshot.accounts.map((a) => {
+        // Build slices by actual holdings (ticker), not asset class
+        const palette = ['#7aa2f7','#91d7e3','#a6da95','#f5a97f','#eed49f','#c6a0f6','#8bd5ca','#f28fad','#f0c6c6','#b8c0e0']
+        const items: { label: string; value: number }[] = []
+        for (const h of a.holdings || []) {
+          const v = h.units * h.price
+          const label = h.ticker || h.asset_class || 'Holding'
+          if (v > 0) items.push({ label, value: v })
+        }
+        if (a.cash_balance && a.cash_balance > 0) items.push({ label: 'Cash', value: a.cash_balance })
+        // Aggregate same-label holdings (rare per account but safe)
+        const agg = new Map<string, number>()
+        for (const it of items) agg.set(it.label, (agg.get(it.label) || 0) + it.value)
+        const slices = Array.from(agg.entries()).map(([label, value]) => ({ label, value }))
+        const totalA = slices.reduce((s, x) => s + x.value, 0)
+        const data = slices.map((s, i) => ({ ...s, color: palette[i % palette.length] }))
+        return (
+          <div key={a.id} className="card" style={{ marginTop: 12 }}>
+            <div className="card-title">{a.name || a.id}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: 16, alignItems: 'start' }}>
+              <PieChart data={data} title={`$${Math.round(totalA).toLocaleString()}`} />
+              <div>
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Ticker</th>
+                      <th>Units</th>
+                      <th>Price</th>
+                      <th>Value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(a.holdings || []).map((h, i) => (
+                      <tr key={i}>
+                        <td>{h.ticker || h.asset_class || '-'}</td>
+                        <td>{h.units}</td>
+                        <td>${h.price}</td>
+                        <td>${(h.units * h.price).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                    {a.cash_balance ? (
+                      <tr>
+                        <td>Cash</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>${(a.cash_balance || 0).toLocaleString()}</td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )
+      })}
     </section>
   )
 }
