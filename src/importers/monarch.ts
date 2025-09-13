@@ -22,6 +22,29 @@ export interface ImportResult {
   meta: { positions: number; accounts: number; lastSyncedAt?: string }
 }
 
+export function parseMonarchSnippet(raw: string): AnyObj {
+  let s = (raw || '').trim()
+  const tryParse = (t: string) => {
+    // remove trailing commas that break strict JSON
+    const cleaned = t.replace(/,\s*([}\]])/g, '$1')
+    return JSON.parse(cleaned)
+  }
+  try {
+    if (s.startsWith('{') || s.startsWith('[')) return tryParse(s)
+    if (s.startsWith('"aggregateHoldings"')) return tryParse(`{${s}}`)
+    if (s.startsWith('"edges"')) return tryParse(`{${s}}`)
+    // attempt to extract first {...} block
+    const i = s.indexOf('{')
+    const j = s.lastIndexOf('}')
+    if (i !== -1 && j !== -1 && j > i) {
+      return tryParse(s.slice(i, j + 1))
+    }
+  } catch (_) {
+    // fall through
+  }
+  throw new Error('Unrecognized or invalid JSON snippet')
+}
+
 export function importMonarchInvestments(json: AnyObj): ImportResult {
   // Accept a variety of GraphQL-like shapes
   let edges: any[] | undefined =
@@ -89,3 +112,12 @@ export function importMonarchInvestments(json: AnyObj): ImportResult {
   return { accounts: Array.from(accountMap.values()), meta: { positions, accounts: accountMap.size, lastSyncedAt: latestSync } }
 }
 
+export function importMonarchFromString(raw: string): ImportResult {
+  const obj = parseMonarchSnippet(raw)
+  // If the parsed object itself is the aggregateHoldings value, wrap it
+  let wrapped = obj
+  if (!wrapped.aggregateHoldings && (wrapped.edges || wrapped.__typename === 'AggregateHoldingConnection')) {
+    wrapped = { aggregateHoldings: wrapped }
+  }
+  return importMonarchInvestments(wrapped)
+}

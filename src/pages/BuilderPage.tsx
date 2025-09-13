@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useApp } from '@state/AppContext'
 import type { Snapshot, Account, HoldingLot, RealEstate, Contribution, Expense, SocialSecurity, Assumptions } from '@types/schema'
 import { validateSnapshot } from '@types/schema'
-import { importMonarchInvestments } from '@importers/monarch'
+import { importMonarchFromString } from '@importers/monarch'
 
 function nowIso() {
   return new Date().toISOString()
@@ -145,8 +145,7 @@ export function BuilderPage() {
   const [importInfo, setImportInfo] = useState<string>('')
   function importMonarch() {
     try {
-      const parsed = JSON.parse(monarchRaw)
-      const res = importMonarchInvestments(parsed)
+      const res = importMonarchFromString(monarchRaw)
       setImportInfo(`Imported ${res.meta.positions} positions into ${res.meta.accounts} accounts${res.meta.lastSyncedAt ? ` (last sync ${res.meta.lastSyncedAt})` : ''}`)
       setDraft((d) => ({
         ...d,
