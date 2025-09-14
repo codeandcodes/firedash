@@ -9,7 +9,7 @@ export interface Timeline {
   months: number
   retirementAt?: number // month index
   cashflows: CashFlow[]
-  rentalNetMonthly?: number
+  ssStartMonth?: number
 }
 
 function monthsBetween(startISO: string, years: number): number {
@@ -57,7 +57,7 @@ export function buildTimeline(snapshot: Snapshot, years: number): Timeline {
     }
   }
 
-  // Retirement spend (outflow) and social security (inflow) handled in sim loop via parameters.
+  // Retirement spend handled in simulation loop; Social Security start month derived below.
 
   // Retirement date → month index if provided
   let retirementAt: number | undefined
@@ -68,22 +68,53 @@ export function buildTimeline(snapshot: Snapshot, years: number): Timeline {
     const deltaYears = Math.max(0, (snapshot.retirement.target_age as number) - (snapshot.person.current_age as number))
     retirementAt = Math.round(deltaYears * 12)
   }
-  // Rental net flows (rough): rent*(1-vacancy) - expenses - taxes/12 - insurance/12 - maintenance*value/12 - payment
-  let rentalNetMonthly = 0
+  // Property flows per month: add recurring carrying costs and rental net income; mortgage ends when paid off.
   for (const re of snapshot.real_estate || []) {
-    if (re.rental) {
-      const rent = re.rental.rent || 0
-      const vacancy = re.rental.vacancy_pct || 0
-      const rexp = re.rental.expenses || 0
-      const taxes = re.taxes || 0
-      const ins = re.insurance || 0
-      const maint = (re.maintenance_pct || 0) * (re.value || 0)
-      const payment = re.payment || 0
-      rentalNetMonthly += (rent * (1 - vacancy)) - rexp - taxes/12 - ins/12 - maint/12 - payment
+    const taxes = re.taxes || 0
+    const ins = re.insurance || 0
+    const maint = (re.maintenance_pct || 0) * (re.value || 0)
+    const rMonthly = re.rental ? ((re.rental.rent || 0) * (1 - (re.rental.vacancy_pct || 0)) - (re.rental.expenses || 0)) : 0
+    // Mortgage payoff months
+    let mortgageMonths = totalMonths
+    const P = Math.max(0, re.mortgage_balance || 0)
+    const pay = Math.max(0, re.payment || 0)
+    const r = Math.max(0, (re.rate || 0) / 12)
+    if (P > 0 && pay > 0) {
+      if (r > 0 && pay > P * r) {
+        // n = ln(p/(p - rP)) / ln(1+r)
+        mortgageMonths = Math.min(totalMonths, Math.ceil(Math.log(pay / (pay - r * P)) / Math.log(1 + r)))
+      } else if (r === 0) {
+        mortgageMonths = Math.min(totalMonths, Math.ceil(P / pay))
+      } else {
+        // Negative amortization or insufficient payment; treat as interest-only for horizon
+        mortgageMonths = totalMonths
+      }
+    } else {
+      mortgageMonths = 0
+    }
+    for (let m = 0; m < totalMonths; m++) {
+      const carry = -(taxes/12 + ins/12 + maint/12)
+      const mort = m < mortgageMonths ? -(pay) : 0
+      const net = rMonthly + carry + mort
+      if (net !== 0) flows.push({ monthIndex: m, amount: net })
     }
   }
 
-  return { months: totalMonths, retirementAt, cashflows: flows.sort((a, b) => a.monthIndex - b.monthIndex), rentalNetMonthly }
+  // Determine Social Security start month based on earliest claim_age
+  let ssStartMonth: number | undefined
+  if ((snapshot.social_security || []).length && snapshot.person?.current_age != null) {
+    let minMonth: number | undefined
+    for (const ss of snapshot.social_security || []) {
+      if (ss.claim_age != null) {
+        const deltaYears = Math.max(0, (ss.claim_age as number) - (snapshot.person!.current_age as number))
+        const m = Math.round(deltaYears * 12)
+        if (minMonth == null || m < minMonth) minMonth = m
+      }
+    }
+    ssStartMonth = minMonth
+  }
+
+  return { months: totalMonths, retirementAt, ssStartMonth, cashflows: flows.sort((a, b) => a.monthIndex - b.monthIndex) }
 }
 /*
 Monthly cashflow schedule builder.

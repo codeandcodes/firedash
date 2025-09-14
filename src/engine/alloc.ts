@@ -37,8 +37,12 @@ export function computeAllocation(snapshot: Snapshot): Allocation {
       sums[classifyHolding(h)] += v
     }
   }
+  // Treat real estate as equity (value minus mortgage balance) for investable total
   for (const re of snapshot.real_estate || []) {
-    if (re.value) sums.REAL_ESTATE += re.value
+    const v = re.value || 0
+    const mb = re.mortgage_balance || 0
+    const equity = Math.max(0, v - mb)
+    sums.REAL_ESTATE += equity
   }
   const total = Object.values(sums).reduce((s, x) => s + x, 0)
   const weights: Record<AssetClass, number> = { US_STOCK: 0, INTL_STOCK: 0, BONDS: 0, REIT: 0, CASH: 0, REAL_ESTATE: 0, CRYPTO: 0, GOLD: 0 }

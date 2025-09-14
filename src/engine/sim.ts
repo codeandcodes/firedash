@@ -47,7 +47,7 @@ interface LoopOptions {
   cashflows: Map<number, number>
   deterministic?: boolean
   retAt?: number
-  rentalNetMonthly?: number
+  ssAt?: number
   mcMode?: 'bootstrap' | 'regime' | 'gbm'
   bootstrapBlockMonths?: number
   bootstrapNoiseSigma?: number
@@ -101,14 +101,14 @@ function runPath(initial: number, targets: Record<AssetClass, number>, opt: Loop
     })
 
     // scheduled cash flows
-    let cf = opt.cashflows.get(m) || 0
-    if (typeof opt.rentalNetMonthly === 'number') cf += opt.rentalNetMonthly
+    // scheduled cash flows (contribs, expenses, property flows)
+    const cf = opt.cashflows.get(m) || 0
     balances.CASH += cf
 
     // real spend and SS (inflation-adjusted)
     const retired = opt.retAt == null ? true : m >= opt.retAt
     const spendNominal = retired ? spendReal * Math.exp(inflM * m) : 0
-    const ssNominal = retired ? ssReal * Math.exp(inflM * m) : 0
+    const ssNominal = (opt.ssAt != null && m >= (opt.ssAt as number)) ? ssReal * Math.exp(inflM * m) : 0
     balances.CASH += ssNominal - spendNominal
 
     // rebalance
@@ -154,7 +154,7 @@ export function simulate(snapshot: Snapshot, options: SimOptions = {}): { summar
     ssMonthly,
     cashflows,
     retAt: timeline.retirementAt,
-    rentalNetMonthly: timeline.rentalNetMonthly
+    ssAt: timeline.ssStartMonth
   }
 
   const details: PathStats[] = []
@@ -200,7 +200,7 @@ export function simulateDeterministic(snapshot: Snapshot, options: SimOptions = 
     cashflows,
     retAt: timeline.retirementAt,
     deterministic: true,
-    rentalNetMonthly: timeline.rentalNetMonthly
+    ssAt: timeline.ssStartMonth
   }
 
   const res = runPath(total, weights, loopOpt)
@@ -232,7 +232,7 @@ export function simulateDeterministicSeries(snapshot: Snapshot, options: SimOpti
     cashflows,
     retAt: timeline.retirementAt,
     deterministic: true,
-    rentalNetMonthly: timeline.rentalNetMonthly
+    ssAt: timeline.ssStartMonth
   }
 
   // Deterministic balances by class and total
@@ -244,9 +244,8 @@ export function simulateDeterministicSeries(snapshot: Snapshot, options: SimOpti
   let cumOut = 0
   for (let m = 0; m < timeline.months; m++) {
     const spendNominal = spendMonthly * Math.exp(inflM * m)
-    const ssNominal = ssMonthly * Math.exp(inflM * m)
-    let cf = cashflows.get(m) || 0
-    if (typeof timeline.rentalNetMonthly === 'number') cf += timeline.rentalNetMonthly
+    const ssNominal = (timeline.ssStartMonth != null && m >= (timeline.ssStartMonth as number)) ? ssMonthly * Math.exp(inflM * m) : 0
+    const cf = cashflows.get(m) || 0
     const netOut = spendNominal - ssNominal - cf // positive = money leaving portfolio
     cumOut += netOut
     if (cumOut < 0) cumOut = 0
@@ -275,12 +274,12 @@ export function simulateSeries(snapshot: Snapshot, options: SimOptions & { maxPa
   const loopOptBase = { months: timeline.months, inflation, rebalEvery, spendMonthly, ssMonthly, cashflows, retAt: timeline.retirementAt }
 
   // Deterministic series with by-class breakdown
-  const detSeries = runPathWithSeries(total, weights, { ...loopOptBase, deterministic: true, rentalNetMonthly: timeline.rentalNetMonthly })
+  const detSeries = runPathWithSeries(total, weights, { ...loopOptBase, deterministic: true, ssAt: timeline.ssStartMonth })
 
   // Monte Carlo series for total balances; compute percentiles per month
   const series: number[][] = []
   for (let i = 0; i < maxPaths; i++) {
-    const s = runPathWithSeries(total, weights, { ...loopOptBase, rentalNetMonthly: timeline.rentalNetMonthly, mcMode: options.mcMode || 'regime', bootstrapBlockMonths: options.bootstrapBlockMonths, bootstrapNoiseSigma: options.bootstrapNoiseSigma }).total
+    const s = runPathWithSeries(total, weights, { ...loopOptBase, ssAt: timeline.ssStartMonth, mcMode: options.mcMode || 'regime', bootstrapBlockMonths: options.bootstrapBlockMonths, bootstrapNoiseSigma: options.bootstrapNoiseSigma }).total
     series.push(s)
   }
   const months = timeline.months
@@ -356,11 +355,10 @@ export function simulatePathTotals(snapshot: Snapshot, options: SO = {}): { tota
       const r = options.mcMode ? (sampler ? (sampler.next() as any)[IDX_ASSET[i]] : sampleReturn(p.muM, p.sigmaM)) : deterministicReturn(p.muM)
       balances[i] *= 1 + r
     }
-    let cf = cashflows.get(m) || 0
-    if (typeof timeline.rentalNetMonthly === 'number') cf += timeline.rentalNetMonthly
+    const cf = cashflows.get(m) || 0
     balances[ASSET_IDX.CASH] += cf
     const spendNominal = spendMonthly * Math.exp(inflM * m)
-    const ssNominal = ssMonthly * Math.exp(inflM * m)
+    const ssNominal = (timeline.ssStartMonth != null && m >= (timeline.ssStartMonth as number)) ? ssMonthly * Math.exp(inflM * m) : 0
     balances[ASSET_IDX.CASH] += ssNominal - spendNominal
     if (rebalEvery > 0 && (m + 1) % rebalEvery === 0) {
       // rebalance
@@ -416,11 +414,10 @@ function runPathWithSeries(initial: number, targets: Record<AssetClass, number>,
       const r = opt.deterministic ? deterministicReturn(p.muM) : sampler ? sampler.next()[k] : sampleReturn(p.muM, p.sigmaM)
       balances[k] *= 1 + r
     })
-    let cf = opt.cashflows.get(m) || 0
-    if (typeof opt.rentalNetMonthly === 'number') cf += opt.rentalNetMonthly
+    const cf = opt.cashflows.get(m) || 0
     balances.CASH += cf
     const spendNominal = spendReal * Math.exp(inflM * m)
-    const ssNominal = ssReal * Math.exp(inflM * m)
+    const ssNominal = (timeline.ssStartMonth != null && m >= (timeline.ssStartMonth as number)) ? ssReal * Math.exp(inflM * m) : 0
     balances.CASH += ssNominal - spendNominal
     if (opt.rebalEvery > 0 && (m + 1) % opt.rebalEvery === 0) rebalance(balances, targets)
     const t = ASSET_CLASSES.reduce((s, k) => s + balances[k], 0)
@@ -428,6 +425,37 @@ function runPathWithSeries(initial: number, targets: Record<AssetClass, number>,
     ASSET_CLASSES.forEach((k) => (byClass[k][m] = balances[k]))
   }
   return { total, byClass }
+}
+
+// Deterministic monthly returns contributions per asset class (pre-rebalance, excludes cashflows)
+export function simulateDeterministicReturnContribs(snapshot: Snapshot, options: SimOptions = {}): Record<AssetClass, number[]> {
+  const years = options.years ?? 40
+  const rebalFreq = options.rebalFreq ?? (snapshot.assumptions?.rebalancing?.frequency || 'annual')
+  const { weights, total } = computeAllocation(snapshot)
+  const timeline = buildTimeline(snapshot, years)
+  const rebalEvery = rebalFreq === 'monthly' ? 1 : rebalFreq === 'quarterly' ? 3 : 12
+  let balances: Record<AssetClass, number> = zeroBalances()
+  ASSET_CLASSES.forEach((k) => (balances[k] = total * (weights[k] || 0)))
+  const paramsM = Object.fromEntries(
+    ASSET_CLASSES.map((k) => {
+      const p = RETURNS[k]
+      const { muM, sigmaM } = monthlyParams(p.mu, p.sigma)
+      return [k, { muM, sigmaM }]
+    })
+  ) as Record<AssetClass, { muM: number; sigmaM: number }>
+  const contrib: Record<AssetClass, number[]> = {} as any
+  ASSET_CLASSES.forEach((k) => { contrib[k] = new Array(timeline.months).fill(0) })
+  for (let m = 0; m < timeline.months; m++) {
+    ASSET_CLASSES.forEach((k) => {
+      const p = paramsM[k]
+      const r = deterministicReturn(p.muM)
+      const inc = balances[k] * r
+      contrib[k][m] = inc
+      balances[k] += inc
+    })
+    if (rebalEvery > 0 && (m + 1) % rebalEvery === 0) rebalance(balances, weights as any)
+  }
+  return contrib
 }
 
 function realEstateMu(snapshot: Snapshot): number {
