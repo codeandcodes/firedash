@@ -8,6 +8,8 @@ import { StackedArea } from '@components/charts/StackedArea'
 import { YearlyPercentileTable } from '@components/YearlyPercentileTable'
 import type { MonteSummary } from '@types/engine'
 import { P2Quantile } from '@engine/quantile'
+import { LinearProgress, Box } from '@mui/material'
+import { resultsKey, saveCache, loadCache } from '@state/cache'
 
 export function ResultsPage() {
   const { snapshot, simOptions } = useApp()
@@ -16,6 +18,7 @@ export function ResultsPage() {
   const [loading, setLoading] = useState(false)
   const simWorkerRef = useRef<Worker | null>(null)
   const poolRefs = useRef<Worker[]>([])
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
 
   useEffect(() => {
     if (!simWorkerRef.current) {
@@ -29,6 +32,19 @@ export function ResultsPage() {
         }
         setSeries(data.series)
         setMcSummary(data.summary)
+        // cache deterministic and initial summary
+        if (snapshot) {
+          const key = resultsKey(snapshot, {
+            paths: simOptions.paths,
+            years: simOptions.years,
+            inflation: simOptions.inflation,
+            rebalFreq: simOptions.rebalFreq,
+            mcMode: simOptions.mcMode,
+            bootstrapBlockMonths: simOptions.bootstrapBlockMonths,
+            bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma
+          })
+          saveCache(key, { series: data.series, summary: data.summary })
+        }
         setLoading(false)
       }
     }
@@ -40,6 +56,25 @@ export function ResultsPage() {
   useEffect(() => {
     if (!snapshot || !simWorkerRef.current) { setSeries(null); setMcSummary(null); return }
     setLoading(true)
+    setProgress(null)
+    // Try cache
+    const cacheKey = resultsKey(snapshot, {
+      paths: simOptions.paths,
+      years: simOptions.years,
+      inflation: simOptions.inflation,
+      rebalFreq: simOptions.rebalFreq,
+      mcMode: simOptions.mcMode,
+      bootstrapBlockMonths: simOptions.bootstrapBlockMonths,
+      bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma
+    })
+    const cached = loadCache<{ series: any; summary: MonteSummary }>(cacheKey)
+    if (cached) {
+      setSeries(cached.series)
+      setMcSummary(cached.summary)
+      setLoading(false)
+      setProgress(null)
+      return
+    }
     // First compute deterministic + scaffolding
     simWorkerRef.current.postMessage({ snapshot, options: { years: simOptions.years, inflation: simOptions.inflation, rebalFreq: simOptions.rebalFreq, paths: Math.min(simOptions.paths, 1000), mcMode: simOptions.mcMode, bootstrapBlockMonths: simOptions.bootstrapBlockMonths, bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma, maxPathsForSeries: Math.min(simOptions.paths, 1000) } })
     // Then start MC pool progressively updating percentiles
@@ -58,12 +93,14 @@ export function ResultsPage() {
     const termP90 = new P2Quantile(0.9)
     let received = 0
     let toLaunch = simOptions.paths
-    const cores = Math.max(1, Math.min(navigator.hardwareConcurrency || 4, 8, toLaunch))
+    const maxAllowed = Math.max(1, Math.min(simOptions.maxWorkers || (navigator.hardwareConcurrency || 4), 8))
+    const cores = Math.max(1, Math.min(maxAllowed, toLaunch))
     // terminate old pool
     poolRefs.current.forEach(w => w.terminate())
     poolRefs.current = []
     const perWorker = Math.floor(toLaunch / cores)
     const extra = toLaunch % cores
+    setProgress({ done: 0, total: toLaunch })
     for (let i = 0; i < cores; i++) {
       const count = perWorker + (i < extra ? 1 : 0)
       if (count <= 0) continue
@@ -90,6 +127,7 @@ export function ResultsPage() {
             termP90.add(st.terminal)
           }
           received += totalsBatch.length
+          setProgress((p) => p ? { ...p, done: Math.min(p.done + totalsBatch.length, p.total) } : null)
           // progressive update: emit new percentiles
           setSeries((prev) => {
             if (!prev) return prev
@@ -101,7 +139,10 @@ export function ResultsPage() {
               mc.p75[m] = (p2[3][m] as any).get()
               mc.p90[m] = (p2[4][m] as any).get()
             }
-            return { ...prev, mc }
+            const res = { ...prev, mc }
+            // update cache progressively
+            try { saveCache(cacheKey, { series: res, summary: { successProbability: received ? successes / received : 0, medianTerminal: termP2.get(), p10Terminal: (termP10 as any).get?.() ?? NaN, p90Terminal: (termP90 as any).get?.() ?? NaN } as any }) } catch {}
+            return res
           })
           setMcSummary({ successProbability: received ? successes / received : 0, medianTerminal: termP2.get(), p10Terminal: (termP10 as any).get?.() ?? NaN, p90Terminal: (termP90 as any).get?.() ?? NaN } as any)
         } else if (msg.type === 'done') {
@@ -165,7 +206,12 @@ export function ResultsPage() {
           </div>
           <div className="card">
             <div className="card-title">Monte Carlo</div>
-            <div className="card-metric">{loading ? 'Computing…' : mcText}</div>
+            <div className="card-metric">{loading ? `Computing… ${progress ? Math.round((progress.done/progress.total)*100) : 0}% (${progress?.done||0}/${progress?.total||0})` : mcText}</div>
+            {loading && progress && (
+              <Box sx={{ mt: 1 }}>
+                <LinearProgress variant="determinate" value={Math.max(0, Math.min(100, Math.round((progress.done/progress.total)*100))) } />
+              </Box>
+            )}
           </div>
         </div>
         {series && !loading && (

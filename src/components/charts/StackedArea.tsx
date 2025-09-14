@@ -12,7 +12,7 @@ const COLORS: Record<AssetClass, string> = {
   GOLD: '#e5c07b'
 }
 
-export const StackedArea: React.FC<{ byClass: Record<AssetClass, number[]>; width?: number; height?: number; years?: number; startYear?: number; retAt?: number }> = ({ byClass, width = 800, height = 300, years, startYear, retAt }) => {
+export const StackedArea: React.FC<{ byClass: Record<AssetClass, number[]>; width?: number; height?: number; years?: number; startYear?: number; retAt?: number; xLabel?: string; yLabel?: string }> = ({ byClass, width = 800, height = 300, years, startYear, retAt, xLabel = 'Year', yLabel = 'Balance ($)' }) => {
   const keys = Object.keys(byClass) as AssetClass[]
   const months = byClass[keys[0]].length
   const totals = new Array<number>(months).fill(0)
@@ -55,12 +55,21 @@ export const StackedArea: React.FC<{ byClass: Record<AssetClass, number[]>; widt
     prev = top
   }
 
+  function fmtAbbrev(n: number) {
+    const abs = Math.abs(n)
+    if (abs >= 1e9) return `$${(n/1e9).toFixed(1).replace(/\.0$/,'')}B`
+    if (abs >= 1e6) return `$${(n/1e6).toFixed(1).replace(/\.0$/,'')}M`
+    if (abs >= 1e3) return `$${(n/1e3).toFixed(1).replace(/\.0$/,'')}K`
+    return `$${Math.round(n).toLocaleString()}`
+  }
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H}>
       <rect x={0} y={0} width={W} height={H} fill="#101626" rx={8} />
       {/* Gridlines */}
       <g stroke="#1f2940" strokeWidth={1} opacity={0.9}>
         {[0,0.25,0.5,0.75,1].map((t, idx) => (<line key={idx} x1={padLeft} x2={W - padRight} y1={y(t*maxY)} y2={y(t*maxY)} />))}
+        {/* Minor Y gridlines */}
+        {[0.125,0.375,0.625,0.875].map((t, idx) => (<line key={`my${idx}`} x1={padLeft} x2={W - padRight} y1={y(t*maxY)} y2={y(t*maxY)} opacity={0.4} />))}
         {(() => {
           const yrs = years ?? Math.max(1, Math.round(months/12))
           const maxTicks = Math.max(2, Math.min(10, Math.round((W - padLeft - padRight) / 80)))
@@ -69,6 +78,13 @@ export const StackedArea: React.FC<{ byClass: Record<AssetClass, number[]>; widt
           for (let yi = 0; yi <= yrs; yi += step) {
             const xi = Math.min(months-1, Math.round((yi/yrs) * (months-1)))
             arr.push(<line key={yi} y1={padTop} y2={H - padBottom} x1={x(xi)} x2={x(xi)} />)
+          }
+          // Minor X gridlines
+          for (let yi = 0; yi <= yrs - step; yi += step) {
+            const xi1 = Math.min(months-1, Math.round((yi/yrs) * (months-1)))
+            const xi2 = Math.min(months-1, Math.round(((yi+step)/yrs) * (months-1)))
+            const mid = Math.round((xi1 + xi2)/2)
+            arr.push(<line key={`mx${yi}`} y1={padTop} y2={H - padBottom} x1={x(mid)} x2={x(mid)} opacity={0.4} />)
           }
           return arr
         })()}
@@ -85,8 +101,24 @@ export const StackedArea: React.FC<{ byClass: Record<AssetClass, number[]>; widt
             const label = startYear ? String(startYear + yi) : String(yi)
             arr.push(<text key={yi} x={x(xi)} y={H - 6} textAnchor="middle">{label}</text>)
           }
+          // minor labels
+          for (let yi = 0; yi <= yrs - step; yi += step) {
+            const xi1 = Math.min(months-1, Math.round((yi/yrs) * (months-1)))
+            const xi2 = Math.min(months-1, Math.round(((yi+step)/yrs) * (months-1)))
+            const mid = Math.round((xi1 + xi2)/2)
+            if (startYear != null) {
+              const year = startYear + Math.floor(mid/12)
+              const mon = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][mid % 12]
+              arr.push(<text key={`mxl${yi}`} x={x(mid)} y={H - 6} textAnchor="middle" opacity={0.6} fontSize={9}>{`${mon} ${year}`}</text>)
+            }
+          }
           return arr
         })()}
+      </g>
+      {/* Axis labels */}
+      <g fill="#9aa4b2" fontSize={11}>
+        <text x={W/2} y={H - 2} textAnchor="middle">{xLabel}</text>
+        <text transform={`translate(12 ${H/2}) rotate(-90)`} textAnchor="middle">{yLabel}</text>
       </g>
 
       {/* Retirement marker */}
@@ -108,6 +140,11 @@ export const StackedArea: React.FC<{ byClass: Record<AssetClass, number[]>; widt
             </g>
           ))}
         </g>
+      </g>
+      {/* Y-axis labels */}
+      <g fill="#9aa4b2" fontSize={10}>
+        {[0,0.25,0.5,0.75,1].map((t, idx) => (<text key={`yl${idx}`} x={padLeft - 6} y={y(t*maxY) + 3} textAnchor="end">{fmtAbbrev(t*maxY)}</text>))}
+        {[0.125,0.375,0.625,0.875].map((t, idx) => (<text key={`myl${idx}`} x={padLeft - 6} y={y(t*maxY) + 3} textAnchor="end" opacity={0.6} fontSize={9}>{fmtAbbrev(t*maxY)}</text>))}
       </g>
     </svg>
   )

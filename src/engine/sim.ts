@@ -207,6 +207,55 @@ export function simulateDeterministic(snapshot: Snapshot, options: SimOptions = 
   return { terminal: res.terminal }
 }
 
+export function simulateDeterministicSeries(snapshot: Snapshot, options: SimOptions = {}): { months: number; total: number[]; byClass: Record<AssetClass, number[]>; principalRemaining: number[] } {
+  const years = options.years ?? 40
+  const inflation = options.inflation ?? (snapshot.assumptions?.inflation_pct ?? 0.02)
+  const rebalFreq = options.rebalFreq ?? (snapshot.assumptions?.rebalancing?.frequency || 'annual')
+  const { weights, total } = computeAllocation(snapshot)
+  const timeline = buildTimeline(snapshot, years)
+
+  const rebalEvery = rebalFreq === 'monthly' ? 1 : rebalFreq === 'quarterly' ? 3 : 12
+  const muRE = realEstateMu(snapshot)
+  RETURNS.REAL_ESTATE.mu = muRE
+  const cashflows = new Map<number, number>()
+  for (const cf of timeline.cashflows) cashflows.set(cf.monthIndex, (cashflows.get(cf.monthIndex) || 0) + cf.amount)
+
+  const spendMonthly = Math.max(0, snapshot.retirement.expected_spend_monthly || 0)
+  const ssMonthly = (snapshot.social_security || []).reduce((s, ss) => Math.max(s, ss.monthly_amount || 0), 0)
+
+  const loopOpt = {
+    months: timeline.months,
+    inflation,
+    rebalEvery,
+    spendMonthly,
+    ssMonthly,
+    cashflows,
+    retAt: timeline.retirementAt,
+    deterministic: true,
+    rentalNetMonthly: timeline.rentalNetMonthly
+  }
+
+  // Deterministic balances by class and total
+  const res = runPathWithSeries(total, weights, loopOpt)
+
+  // Principal remaining approximation: initial total minus cumulative net outflows (spend - SS - net inflows).
+  const inflM = Math.log(1 + inflation) / 12
+  const principalRemaining = new Array<number>(timeline.months)
+  let cumOut = 0
+  for (let m = 0; m < timeline.months; m++) {
+    const spendNominal = spendMonthly * Math.exp(inflM * m)
+    const ssNominal = ssMonthly * Math.exp(inflM * m)
+    let cf = cashflows.get(m) || 0
+    if (typeof timeline.rentalNetMonthly === 'number') cf += timeline.rentalNetMonthly
+    const netOut = spendNominal - ssNominal - cf // positive = money leaving portfolio
+    cumOut += netOut
+    if (cumOut < 0) cumOut = 0
+    principalRemaining[m] = Math.max(0, total - cumOut)
+  }
+
+  return { months: timeline.months, total: res.total, byClass: res.byClass, principalRemaining }
+}
+
 export function simulateSeries(snapshot: Snapshot, options: SimOptions & { maxPathsForSeries?: number } = {}) {
   const years = options.years ?? 40
   const inflation = options.inflation ?? (snapshot.assumptions?.inflation_pct ?? 0.02)

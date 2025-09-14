@@ -7,6 +7,7 @@ export const ScenarioOptions: React.FC = () => {
   const [yearsLocal, setYearsLocal] = useState(simOptions.years)
   const [pathsLocal, setPathsLocal] = useState(simOptions.paths)
   const [inflLocal, setInflLocal] = useState(simOptions.inflation)
+  const [workersLocal, setWorkersLocal] = useState(simOptions.maxWorkers)
   const debounceRef = useRef<number | null>(null)
   function commitDebounced(fn: () => void) {
     if (debounceRef.current) window.clearTimeout(debounceRef.current)
@@ -54,6 +55,12 @@ export const ScenarioOptions: React.FC = () => {
             <Slider min={0} max={10} step={0.05} value={inflLocal * 100}
                     onChange={(_, v) => setInflLocal((v as number)/100)}
                     onChangeCommitted={(_, v) => setSimOptions({ inflation: (v as number) / 100 })} />
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <Typography gutterBottom>Max Workers: {workersLocal}</Typography>
+            <Slider min={1} max={8} step={1} value={workersLocal}
+                    onChange={(_, v) => setWorkersLocal(v as number)}
+                    onChangeCommitted={(_, v) => setSimOptions({ maxWorkers: v as number })} />
           </Grid>
           <Grid item xs={12} md={3}>
             <FormControl fullWidth>

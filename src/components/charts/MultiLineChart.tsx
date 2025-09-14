@@ -11,7 +11,9 @@ export const MultiLineChart: React.FC<{
   years?: number
   startYear?: number
   title?: string
-}> = ({ seriesByKey, width = 900, height = 320, years, startYear, title }) => {
+  xLabel?: string
+  yLabel?: string
+}> = ({ seriesByKey, width = 900, height = 320, years, startYear, title, xLabel = 'Year', yLabel = 'Value' }) => {
   const keys = Object.keys(seriesByKey)
   const months = keys.length ? seriesByKey[keys[0]].length : 0
   const maxY = useMemo(() => {
@@ -53,6 +55,30 @@ export const MultiLineChart: React.FC<{
     xTicks.push({ i: xi, label: startYear ? String(startYear + yi) : String(yi) })
   }
   const yTicks = [0, 0.25, 0.5, 0.75, 1].map((t) => ({ v: t * maxY, label: (t * maxY).toFixed(2) }))
+  const minorYTicks = (() => {
+    const arr: { v: number; label: string }[] = []
+    for (let k = 0; k < 5 - 1; k++) {
+      const v1 = yTicks[k].v, v2 = yTicks[k+1].v
+      const mid = (v1 + v2) / 2
+      arr.push({ v: mid, label: mid.toFixed(2) })
+    }
+    return arr
+  })()
+  const minorXTicks = (() => {
+    const arr: { i: number; label: string }[] = []
+    for (let k = 0; k < xTicks.length - 1; k++) {
+      const i1 = xTicks[k].i, i2 = xTicks[k+1].i
+      const mid = Math.round((i1 + i2) / 2)
+      let label = ''
+      if (startYear != null) {
+        const year = startYear + Math.floor(mid/12)
+        const mon = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][mid % 12]
+        label = `${mon} ${year}`
+      }
+      arr.push({ i: mid, label })
+    }
+    return arr
+  })()
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H}
@@ -67,18 +93,27 @@ export const MultiLineChart: React.FC<{
       <g stroke="#1f2940" strokeWidth={1} opacity={0.9}>
         {yTicks.map((t, idx) => (<line key={idx} x1={padLeft} x2={W - padRight} y1={y(t.v)} y2={y(t.v)} />))}
         {xTicks.map((t, idx) => (<line key={idx} y1={padTop} y2={H - padBottom} x1={x(t.i)} x2={x(t.i)} />))}
+        {minorYTicks.map((t, idx) => (<line key={`my${idx}`} x1={padLeft} x2={W - padRight} y1={y(t.v)} y2={y(t.v)} opacity={0.4} />))}
+        {minorXTicks.map((t, idx) => (<line key={`mx${idx}`} y1={padTop} y2={H - padBottom} x1={x(t.i)} x2={x(t.i)} opacity={0.4} />))}
       </g>
       {/* Axes */}
       <g stroke="#c8d3e6" strokeWidth={1.25}>
         <line x1={padLeft} y1={padTop} x2={padLeft} y2={H - padBottom} />
         <line x1={padLeft} y1={H - padBottom} x2={W - padRight} y2={H - padBottom} />
       </g>
+      {/* Axis labels */}
+      <g fill="#9aa4b2" fontSize={11}>
+        <text x={W/2} y={H - 2} textAnchor="middle">{xLabel}</text>
+        <text transform={`translate(12 ${H/2}) rotate(-90)`} textAnchor="middle">{yLabel}</text>
+      </g>
       {keys.map((k) => (
         <path key={k} d={pathOf(seriesByKey[k])} fill="none" stroke={colors[k]} strokeWidth={2} />
       ))}
       <g fill="#9aa4b2" fontSize="10">
         {xTicks.map((t, idx) => (<text key={idx} x={x(t.i)} y={H - 6} textAnchor="middle">{t.label}</text>))}
+        {minorXTicks.map((t, idx) => (<text key={`mxl${idx}`} x={x(t.i)} y={H - 6} textAnchor="middle" opacity={0.6} fontSize={9}>{t.label}</text>))}
         {yTicks.map((t, idx) => (<text key={idx} x={padLeft - 6} y={y(t.v) + 3} textAnchor="end">{t.label}</text>))}
+        {minorYTicks.map((t, idx) => (<text key={`myl${idx}`} x={padLeft - 6} y={y(t.v) + 3} textAnchor="end" opacity={0.6} fontSize={9}>{t.label}</text>))}
         <text x={W / 2} y={14} textAnchor="middle" fill="#c8d3e6">{title || 'Performance by Asset'}</text>
       </g>
       {/* Legend */}

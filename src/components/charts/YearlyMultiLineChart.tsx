@@ -10,7 +10,9 @@ export const YearlyMultiLineChart: React.FC<{
   width?: number
   height?: number
   title?: string
-}> = ({ years, seriesByKey, width = 1000, height = 360, title }) => {
+  xLabel?: string
+  yLabel?: string
+}> = ({ years, seriesByKey, width = 1000, height = 360, title, xLabel = 'Year', yLabel = '% Return' }) => {
   const keys = Object.keys(seriesByKey)
   const n = years.length
   const flatVals: number[] = []
@@ -73,6 +75,27 @@ export const YearlyMultiLineChart: React.FC<{
     const v = yMin + t * (yMax - yMin)
     yTicks.push({ v, label: `${(v * 100).toFixed(0)}%` })
   }
+  const minorYTicks = (() => {
+    const arr: { v: number; label: string }[] = []
+    for (let k = 0; k < 5 - 1; k++) {
+      const v1 = yTicks[k].v, v2 = yTicks[k+1].v
+      const mid = (v1 + v2) / 2
+      arr.push({ v: mid, label: `${(mid*100).toFixed(0)}%` })
+    }
+    return arr
+  })()
+  const minorXTicks = (() => {
+    const arr: { i: number; label: string }[] = []
+    for (let k = 0; k < xTicks.length - 1; k++) {
+      const i1 = xTicks[k].i, i2 = xTicks[k+1].i
+      const mid = Math.round((i1 + i2) / 2)
+      let label = ''
+      const y1 = Number(xTicks[k].label), y2 = Number(xTicks[k+1].label)
+      if (!isNaN(y1) && !isNaN(y2)) label = (((y1 + y2) / 2)).toString()
+      arr.push({ i: mid, label })
+    }
+    return arr
+  })()
 
   const [hoverI, setHoverI] = useState<number | null>(null)
   const hover = useMemo(() => {
@@ -96,6 +119,8 @@ export const YearlyMultiLineChart: React.FC<{
       <g stroke="#1f2940" strokeWidth={1} opacity={0.85}>
         {yTicks.map((t, idx) => (<line key={idx} x1={padLeft} x2={W - padRight} y1={y(t.v)} y2={y(t.v)} />))}
         {xTicks.map((t, idx) => (<line key={idx} y1={padTop} y2={H - padBottom} x1={x(t.i)} x2={x(t.i)} />))}
+        {minorYTicks.map((t, idx) => (<line key={`my${idx}`} x1={padLeft} x2={W - padRight} y1={y(t.v)} y2={y(t.v)} opacity={0.4} />))}
+        {minorXTicks.map((t, idx) => (<line key={`mx${idx}`} y1={padTop} y2={H - padBottom} x1={x(t.i)} x2={x(t.i)} opacity={0.4} />))}
       </g>
       {/* Axes */}
       <g stroke="#c8d3e6" strokeWidth={1.25}>
@@ -106,10 +131,17 @@ export const YearlyMultiLineChart: React.FC<{
       {keys.map((k) => (
         <path key={k} d={pathOf(seriesByKey[k])} fill="none" stroke={colors[k]} strokeWidth={2} />
       ))}
+      {/* Axis labels */}
+      <g fill="#9aa4b2" fontSize={11}>
+        <text x={W/2} y={H - 2} textAnchor="middle">{xLabel}</text>
+        <text transform={`translate(12 ${H/2}) rotate(-90)`} textAnchor="middle">{yLabel}</text>
+      </g>
       {/* Labels */}
       <g fill="#9aa4b2" fontSize={10}>
         {xTicks.map((t, idx) => (<text key={idx} x={x(t.i)} y={H - 6} textAnchor="middle">{t.label}</text>))}
+        {minorXTicks.map((t, idx) => (<text key={`mxl${idx}`} x={x(t.i)} y={H - 6} textAnchor="middle" opacity={0.6} fontSize={9}>{t.label}</text>))}
         {yTicks.map((t, idx) => (<text key={idx} x={padLeft - 6} y={y(t.v) + 3} textAnchor="end">{t.label}</text>))}
+        {minorYTicks.map((t, idx) => (<text key={`myl${idx}`} x={padLeft - 6} y={y(t.v) + 3} textAnchor="end" opacity={0.6} fontSize={9}>{t.label}</text>))}
         <text x={W / 2} y={14} textAnchor="middle" fill="#c8d3e6">{title || 'Yearly Returns by Asset'}</text>
       </g>
       {/* Legend */}

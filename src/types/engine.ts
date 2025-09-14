@@ -14,6 +14,8 @@ export interface SimOptions {
   // Bootstrap (historical) specific controls
   bootstrapBlockMonths?: number
   bootstrapNoiseSigma?: number
+  // Execution controls
+  maxWorkers?: number
 }
 
 export interface PathStats {

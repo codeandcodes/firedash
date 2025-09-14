@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
 
-export const LineChart: React.FC<{ series: number[]; width?: number; height?: number; color?: string; label?: string; years?: number; startYear?: number; retAt?: number }> = ({ series, width = 800, height = 240, color = '#a6da95', label, years, startYear, retAt }) => {
+export const LineChart: React.FC<{ series: number[]; width?: number; height?: number; color?: string; label?: string; years?: number; startYear?: number; retAt?: number; xLabel?: string; yLabel?: string }> = ({ series, width = 800, height = 240, color = '#a6da95', label, years, startYear, retAt, xLabel = 'Year', yLabel = 'Balance ($)' }) => {
   const maxY = Math.max(...series)
   const padLeft = 48
   const padBottom = 28
@@ -29,7 +29,38 @@ export const LineChart: React.FC<{ series: number[]; width?: number; height?: nu
     const xi = Math.min(months - 1, Math.round((yi / yearsCount) * (months - 1)))
     xTicks.push({ i: xi, label: startYear ? String(startYear + yi) : String(yi) })
   }
-  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((t) => ({ v: t * maxY, label: `$${Math.round(t * maxY).toLocaleString()}` }))
+  const minorXTicks = (() => {
+    const arr: { i: number; label: string }[] = []
+    for (let k = 0; k < xTicks.length - 1; k++) {
+      const i1 = xTicks[k].i, i2 = xTicks[k+1].i
+      const mid = Math.round((i1 + i2) / 2)
+      let label = ''
+      if (startYear != null) {
+        const year = startYear + Math.floor(mid/12)
+        const mon = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][mid % 12]
+        label = `${mon} ${year}`
+      }
+      arr.push({ i: mid, label })
+    }
+    return arr
+  })()
+  function fmtAbbrev(n: number) {
+    const abs = Math.abs(n)
+    if (abs >= 1e9) return `$${(n/1e9).toFixed(1).replace(/\.0$/,'')}B`
+    if (abs >= 1e6) return `$${(n/1e6).toFixed(1).replace(/\.0$/,'')}M`
+    if (abs >= 1e3) return `$${(n/1e3).toFixed(1).replace(/\.0$/,'')}K`
+    return `$${Math.round(n).toLocaleString()}`
+  }
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((t) => ({ v: t * maxY, label: fmtAbbrev(t * maxY) }))
+  const minorYTicks = (() => {
+    const arr: { v: number; label: string }[] = []
+    for (let k = 0; k < 5 - 1; k++) {
+      const v1 = yTicks[k].v, v2 = yTicks[k+1].v
+      const mid = (v1 + v2) / 2
+      arr.push({ v: mid, label: fmtAbbrev(mid) })
+    }
+    return arr
+  })()
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H}
@@ -44,6 +75,9 @@ export const LineChart: React.FC<{ series: number[]; width?: number; height?: nu
       <g stroke="#1f2940" strokeWidth={1} opacity={0.9}>
         {yTicks.map((t, idx) => (<line key={idx} x1={padLeft} x2={W - padRight} y1={y(t.v)} y2={y(t.v)} />))}
         {xTicks.map((t, idx) => (<line key={idx} y1={padTop} y2={H - padBottom} x1={x(t.i)} x2={x(t.i)} />))}
+        {/* Minor gridlines */}
+        {minorYTicks.map((t, idx) => (<line key={`my${idx}`} x1={padLeft} x2={W - padRight} y1={y(t.v)} y2={y(t.v)} opacity={0.4} />))}
+        {minorXTicks.map((t, idx) => (<line key={`mx${idx}`} y1={padTop} y2={H - padBottom} x1={x(t.i)} x2={x(t.i)} opacity={0.4} />))}
       </g>
       <path d={path} fill="none" stroke={color} strokeWidth={2} />
       {typeof retAt === 'number' && retAt >= 0 && (
@@ -52,8 +86,16 @@ export const LineChart: React.FC<{ series: number[]; width?: number; height?: nu
           <text x={x(Math.min(months-1, retAt)) + 6} y={padTop + 12} fill="#f5a97f" fontSize={10}>Retirement</text>
         </g>
       )}
+      {/* Axis labels */}
+      <g fill="#9aa4b2" fontSize={11}>
+        <text x={W/2} y={H - 2} textAnchor="middle">{xLabel}</text>
+        <text transform={`translate(12 ${H/2}) rotate(-90)`} textAnchor="middle">{yLabel}</text>
+      </g>
       <g fill="#9aa4b2" fontSize="10">
         {xTicks.map((t, idx) => (<text key={idx} x={x(t.i)} y={H - 6} textAnchor="middle">{t.label}</text>))}
+        {minorXTicks.map((t, idx) => (<text key={`mxl${idx}`} x={x(t.i)} y={H - 6} textAnchor="middle" opacity={0.6} fontSize={9}>{t.label}</text>))}
+        {yTicks.map((t, idx) => (<text key={`yl${idx}`} x={padLeft - 6} y={y(t.v) + 3} textAnchor="end">{t.label}</text>))}
+        {minorYTicks.map((t, idx) => (<text key={`myl${idx}`} x={padLeft - 6} y={y(t.v) + 3} textAnchor="end" opacity={0.6} fontSize={9}>{t.label}</text>))}
         <text x={W / 2} y={14} textAnchor="middle" fill="#c8d3e6">{label || 'Balance over time'}</text>
       </g>
       {hover && (
@@ -62,7 +104,9 @@ export const LineChart: React.FC<{ series: number[]; width?: number; height?: nu
           <circle cx={hover.x} cy={hover.y} r={3} fill={color} />
           <g transform={`translate(${Math.min(W - 180, hover.x + 8)}, ${Math.max(padTop + 8, hover.y - 10)})`}>
             <rect width={160} height={48} fill="#0b1020" stroke="#1f2940" rx={6} />
-            <text x={8} y={16} fill="#c8d3e6" fontSize={11}>Month {hover.i} ({Math.round(hover.i/12)}y)</text>
+            <text x={8} y={16} fill="#c8d3e6" fontSize={11}>
+              {startYear != null ? `${startYear + Math.floor(hover.i/12)} (m${(hover.i%12)+1})` : `Month ${hover.i} (${Math.round(hover.i/12)}y)`}
+            </text>
             <text x={8} y={32} fill="#9aa4b2" fontSize={11}>Value: ${Math.round(hover.v).toLocaleString()}</text>
           </g>
         </g>
