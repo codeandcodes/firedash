@@ -9,12 +9,14 @@ import { AssumptionsPage } from '@pages/AssumptionsPage'
 import { ScenariosPage } from '@pages/ScenariosPage'
 import { ResultsPage } from '@pages/ResultsPage'
 import { SensitivityPage } from '@pages/SensitivityPage'
+import { HistoricalDataPage } from '@pages/HistoricalDataPage'
 
 export function AppRouter() {
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/upload" replace />} />
       <Route path="/upload" element={<UploadPage />} />
+      <Route path="/historical" element={<HistoricalDataPage />} />
       <Route path="/builder" element={<BuilderPage />} />
       <Route path="/snapshot" element={<PortfolioSnapshotPage />} />
       <Route path="/contrib-expenses" element={<ContributionsExpensesPage />} />

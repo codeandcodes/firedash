@@ -6,13 +6,18 @@ import type { AssetClass } from '@types/engine'
 // @ts-ignore
 import datasetJson from '../../data/historical_returns.json'
 
+let overrideDataset: HistoricalDataset | null = null
+export function setHistoricalOverride(d: HistoricalDataset | null) {
+  overrideDataset = d
+}
+
 export interface BootstrapOptions {
   blockMonths: number
   jitterSigma: number // extra white noise std added to sampled returns
 }
 
 export function tryLoadHistorical(): HistoricalDataset | null {
-  const data = datasetJson as HistoricalDataset
+  const data = (overrideDataset as HistoricalDataset | null) ?? (datasetJson as HistoricalDataset)
   if (data && Array.isArray(data.rows)) return data
   return null
 }
@@ -33,9 +38,6 @@ export function createBootstrapSampler(dataset: HistoricalDataset, months: numbe
   for (const a of assets) series[a] = []
   const N = rows.length
   let block = Math.max(1, Math.min(opts.blockMonths || 12, Math.floor(N / 4)))
-  const globalAny = (globalThis as any)
-  // Allow runtime override via ScenarioOptions sliders (best-effort)
-  if (typeof globalAny.__mcBlock === 'number') block = Math.max(1, Math.min(Number(globalAny.__mcBlock), 120))
   function pick(start: number, len: number, arr: number[]): number[] {
     const out: number[] = []
     for (let i = 0; i < len; i++) out.push(arr[(start + i) % arr.length])
@@ -78,7 +80,6 @@ export function createBootstrapSampler(dataset: HistoricalDataset, months: numbe
       for (const a of assets) {
         const base = series[a][idx]
         let sigma = opts.jitterSigma
-        if (typeof globalAny.__mcNoise === 'number') sigma = Number(globalAny.__mcNoise)
         // If annual-expanded, add higher monthly noise to restore realistic dispersion
         if (annualMode && (sigma ?? 0) < 0.01) sigma = 0.012
         const jitter = sigma > 0 ? sigma * randn() : 0

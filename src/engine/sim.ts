@@ -47,7 +47,7 @@ interface LoopOptions {
   deterministic?: boolean
   retAt?: number
   rentalNetMonthly?: number
-  mcMode?: 'regime' | 'gbm'
+  mcMode?: 'bootstrap' | 'regime' | 'gbm'
 }
 
 function zeroBalances(): Balances {
@@ -73,8 +73,11 @@ function runPath(initial: number, targets: Record<AssetClass, number>, opt: Loop
   if (!opt.deterministic) {
     if (opt.mcMode === 'bootstrap') {
       const hist = tryLoadHistorical()
-      if (hist) sampler = createBootstrapSampler(hist, opt.months, ASSET_CLASSES, { blockMonths: 24, jitterSigma: 0.005 })
-      else sampler = createRegimeSampler()
+      if (hist) {
+        const block = (options as any).bootstrapBlockMonths ?? 24
+        const noise = (options as any).bootstrapNoiseSigma ?? 0.005
+        sampler = createBootstrapSampler(hist, opt.months, ASSET_CLASSES, { blockMonths: block, jitterSigma: noise })
+      } else sampler = createRegimeSampler()
     } else if (opt.mcMode === 'regime') {
       sampler = createRegimeSampler()
     }
@@ -261,8 +264,11 @@ function runPathWithSeries(initial: number, targets: Record<AssetClass, number>,
   if (!opt.deterministic) {
     if (opt.mcMode === 'bootstrap') {
       const hist = tryLoadHistorical()
-      if (hist) sampler = createBootstrapSampler(hist, opt.months, ASSET_CLASSES, { blockMonths: 24, jitterSigma: 0.005 })
-      else sampler = createRegimeSampler()
+      if (hist) {
+        const block = (options as any).bootstrapBlockMonths ?? 24
+        const noise = (options as any).bootstrapNoiseSigma ?? 0.005
+        sampler = createBootstrapSampler(hist, opt.months, ASSET_CLASSES, { blockMonths: block, jitterSigma: noise })
+      } else sampler = createRegimeSampler()
     } else if (opt.mcMode === 'regime') {
       sampler = createRegimeSampler()
     }

@@ -1,8 +1,7 @@
+import { useMemo } from 'react'
 import { useApp } from '@state/AppContext'
 import { runDeterministicBacktest } from '@engine/backtest'
 import { runMonteCarlo } from '@engine/monteCarlo'
-import { useMemo } from 'react'
-import { useApp } from '@state/AppContext'
 import { ScenarioOptions } from '@components/ScenarioOptions'
 import { simulateSeries } from '@engine/sim'
 import { FanChart } from '@components/charts/FanChart'
@@ -23,14 +22,18 @@ export function ResultsPage() {
     years: simOptions.years,
     inflation: simOptions.inflation,
     rebalFreq: simOptions.rebalFreq,
-    mcMode: simOptions.mcMode
+    mcMode: simOptions.mcMode,
+    bootstrapBlockMonths: simOptions.bootstrapBlockMonths,
+    bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma
   }) : null), [snapshot, simOptions])
   const series = useMemo(() => (snapshot ? simulateSeries(snapshot, {
     paths: Math.min(simOptions.paths, 1000),
     years: simOptions.years,
     inflation: simOptions.inflation,
     rebalFreq: simOptions.rebalFreq,
-    mcMode: simOptions.mcMode
+    mcMode: simOptions.mcMode,
+    bootstrapBlockMonths: simOptions.bootstrapBlockMonths,
+    bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma
   }) : null), [snapshot, simOptions])
   const startYear = useMemo(() => snapshot ? new Date(snapshot.timestamp).getFullYear() : undefined, [snapshot])
   const retAt = useMemo(() => {

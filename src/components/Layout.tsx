@@ -10,6 +10,7 @@ import { useThemeMode } from '@state/ThemeContext'
 const drawerWidth = 240
 const navItems = [
   { to: '/upload', label: 'Upload' },
+  { to: '/historical', label: 'Historical Data' },
   { to: '/builder', label: 'Builder' },
   { to: '/snapshot', label: 'Snapshot' },
   { to: '/contrib-expenses', label: 'Contrib & Expenses' },

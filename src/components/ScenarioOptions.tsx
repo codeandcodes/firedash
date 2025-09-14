@@ -55,19 +55,21 @@ export const ScenarioOptions: React.FC = () => {
               </Select>
             </FormControl>
           </Grid>
-          {(simOptions as any).mcMode === 'bootstrap' && (
+          {simOptions.mcMode === 'bootstrap' && (
             <>
               <Grid item xs={12} md={3}>
                 <Tooltip title="Sampling block length to preserve multi-month patterns">
-                  <Typography gutterBottom>Block (months)</Typography>
+                  <Typography gutterBottom>Block (months): {simOptions.bootstrapBlockMonths}</Typography>
                 </Tooltip>
-                <Slider min={6} max={60} step={1} defaultValue={24} onChangeCommitted={(_, v) => (window as any).__mcBlock = v} />
+                <Slider min={6} max={60} step={1} value={simOptions.bootstrapBlockMonths}
+                        onChange={(_, v) => setSimOptions({ bootstrapBlockMonths: v as number })} />
               </Grid>
               <Grid item xs={12} md={3}>
                 <Tooltip title="Extra random noise added to sampled returns">
-                  <Typography gutterBottom>Noise σ: {(Number((window as any).__mcNoise)||0.005).toFixed(3)}</Typography>
+                  <Typography gutterBottom>Noise σ: {simOptions.bootstrapNoiseSigma.toFixed(3)}</Typography>
                 </Tooltip>
-                <Slider min={0} max={0.03} step={0.001} defaultValue={0.005} onChange={(_, v) => (window as any).__mcNoise = v} />
+                <Slider min={0} max={0.03} step={0.001} value={simOptions.bootstrapNoiseSigma}
+                        onChange={(_, v) => setSimOptions({ bootstrapNoiseSigma: v as number })} />
               </Grid>
               <Grid item xs={12} md={6}>
                 <Typography color="text.secondary">Place historical data at <code>data/historical_returns.json</code> (see example file).</Typography>

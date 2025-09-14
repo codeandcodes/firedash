@@ -1,0 +1,115 @@
+import React, { useMemo, useState } from 'react'
+
+const DEFAULT_COLORS = [
+  '#7aa2f7','#91d7e3','#a6da95','#f5a97f','#eed49f','#c6a0f6','#f28fad','#e5c07b'
+]
+
+export const MultiLineChart: React.FC<{
+  seriesByKey: Record<string, number[]>
+  width?: number
+  height?: number
+  years?: number
+  startYear?: number
+  title?: string
+}> = ({ seriesByKey, width = 900, height = 320, years, startYear, title }) => {
+  const keys = Object.keys(seriesByKey)
+  const months = keys.length ? seriesByKey[keys[0]].length : 0
+  const maxY = useMemo(() => {
+    let m = 0
+    for (const k of keys) for (const v of seriesByKey[k]) m = Math.max(m, v)
+    return m
+  }, [seriesByKey, keys])
+  const colors = useMemo(() => {
+    const map: Record<string,string> = {}
+    keys.forEach((k, i) => { map[k] = DEFAULT_COLORS[i % DEFAULT_COLORS.length] })
+    return map
+  }, [keys])
+
+  const padLeft = 56, padBottom = 28, padTop = 20, padRight = 8
+  const W = width, H = height
+  const innerW = W - padLeft - padRight
+  const innerH = H - padTop - padBottom
+  const x = (i: number) => padLeft + (i / Math.max(1, months - 1)) * innerW
+  const y = (v: number) => padTop + (maxY ? innerH - (v / maxY) * innerH : innerH)
+
+  function pathOf(arr: number[]) {
+    return arr.map((v, i) => `${i === 0 ? 'M' : 'L'} ${x(i)} ${y(v)}`).join(' ')
+  }
+
+  const [hoverI, setHoverI] = useState<number | null>(null)
+  const hover = useMemo(() => {
+    if (hoverI == null) return null
+    const i = Math.max(0, Math.min(months - 1, hoverI))
+    const vals = Object.fromEntries(keys.map(k => [k, seriesByKey[k][i]])) as Record<string, number>
+    return { i, x: x(i), vals }
+  }, [hoverI, seriesByKey, keys, months])
+
+  const yearsCount = years ?? Math.max(1, Math.round(months / 12))
+  const maxTicks = Math.max(2, Math.min(10, Math.round(innerW / 80)))
+  const step = Math.max(1, Math.ceil(yearsCount / maxTicks))
+  const xTicks = [] as { i: number; label: string }[]
+  for (let yi = 0; yi <= yearsCount; yi += step) {
+    const xi = Math.min(months - 1, Math.round((yi / yearsCount) * (months - 1)))
+    xTicks.push({ i: xi, label: startYear ? String(startYear + yi) : String(yi) })
+  }
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((t) => ({ v: t * maxY, label: (t * maxY).toFixed(2) }))
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H}
+         onMouseMove={(e) => {
+           const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect()
+           const mx = e.clientX - rect.left - padLeft
+           const t = Math.max(0, Math.min(1, mx / innerW))
+           setHoverI(Math.round(t * (months - 1)))
+         }}
+         onMouseLeave={() => setHoverI(null)}>
+      <rect x={0} y={0} width={W} height={H} fill="#101626" rx={8} />
+      <g stroke="#1f2940" strokeWidth={1} opacity={0.9}>
+        {yTicks.map((t, idx) => (<line key={idx} x1={padLeft} x2={W - padRight} y1={y(t.v)} y2={y(t.v)} />))}
+        {xTicks.map((t, idx) => (<line key={idx} y1={padTop} y2={H - padBottom} x1={x(t.i)} x2={x(t.i)} />))}
+      </g>
+      {/* Axes */}
+      <g stroke="#c8d3e6" strokeWidth={1.25}>
+        <line x1={padLeft} y1={padTop} x2={padLeft} y2={H - padBottom} />
+        <line x1={padLeft} y1={H - padBottom} x2={W - padRight} y2={H - padBottom} />
+      </g>
+      {keys.map((k) => (
+        <path key={k} d={pathOf(seriesByKey[k])} fill="none" stroke={colors[k]} strokeWidth={2} />
+      ))}
+      <g fill="#9aa4b2" fontSize="10">
+        {xTicks.map((t, idx) => (<text key={idx} x={x(t.i)} y={H - 6} textAnchor="middle">{t.label}</text>))}
+        {yTicks.map((t, idx) => (<text key={idx} x={padLeft - 6} y={y(t.v) + 3} textAnchor="end">{t.label}</text>))}
+        <text x={W / 2} y={14} textAnchor="middle" fill="#c8d3e6">{title || 'Performance by Asset'}</text>
+      </g>
+      {/* Legend */}
+      <g transform={`translate(${W - 220}, ${padTop + 8})`} fontSize={10} fill="#c8d3e6">
+        <rect x={0} y={0} width={210} height={keys.length*16 + 16} fill="#0b1020" stroke="#1f2940" rx={6} />
+        <g transform="translate(8,6)">
+          {keys.map((k, i) => (
+            <g key={k} transform={`translate(0, ${i*16})`}>
+              <rect width={12} height={8} y={2} fill={colors[k]} />
+              <text x={18} y={9}>{k}</text>
+            </g>
+          ))}
+        </g>
+      </g>
+      {hover && (
+        <g>
+          <line x1={hover.x} x2={hover.x} y1={padTop} y2={H - padBottom} stroke="#c8d3e6" strokeDasharray="4 3" opacity={0.6} />
+          <g transform={`translate(${Math.min(W - 220, hover.x + 8)}, ${padTop + 8})`}>
+            <rect width={200} height={keys.length*16 + 24} fill="#0b1020" stroke="#1f2940" rx={6} />
+            <text x={8} y={14} fill="#c8d3e6" fontSize={11}>Month {hover.i} ({Math.round(hover.i/12)}y)</text>
+            {keys.map((k, i) => (
+              <text key={k} x={8} y={28 + i*16} fill={colors[k]} fontSize={11}>{k}: {(hover.vals[k]).toFixed(2)}</text>
+            ))}
+          </g>
+        </g>
+      )}
+    </svg>
+  )
+}
+
+/*
+MultiLineChart – Renders multiple series (e.g., per-asset cumulative index or returns).
+Expects series values on a consistent scale across keys.
+*/
