@@ -134,7 +134,13 @@ export function importMonarchInvestments(json: AnyObj): ImportResult {
         cost_basis = share / units
       }
 
-      const lot: HoldingLot = { ticker: hh.ticker || security?.ticker || undefined, units, price: price || 0, cost_basis }
+      const lot: HoldingLot = {
+        ticker: hh.ticker || security?.ticker || undefined,
+        name: (hh.name || security?.name || undefined) as string | undefined,
+        units,
+        price: price || 0,
+        cost_basis,
+      }
       accountMap.get(accountId)!.holdings!.push(lot)
     }
 

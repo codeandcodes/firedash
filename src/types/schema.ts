@@ -14,6 +14,8 @@ export type AccountType =
 
 export interface HoldingLot {
   ticker?: string
+  // Optional display name of the holding/security (e.g., "Vanguard 500 Index Fund")
+  name?: string
   asset_class?: string
   units: number
   price: number

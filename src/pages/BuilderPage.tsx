@@ -59,7 +59,7 @@ export function BuilderPage() {
     const next = draft.accounts.slice(); next[idx] = { ...next[idx], ...patch }; update('accounts', next)
   }
   function addHolding(idx: number) {
-    const lot: HoldingLot = { ticker: '', units: 0, price: 0 }
+    const lot: HoldingLot = { ticker: '', name: '', units: 0, price: 0 }
     const next = draft.accounts.slice()
     next[idx] = { ...next[idx], holdings: [ ...(next[idx].holdings || []), lot ] }
     update('accounts', next)
@@ -276,9 +276,10 @@ export function BuilderPage() {
             <Button startIcon={<AddIcon />} size="small" sx={{ mb: 1 }} onClick={() => addHolding(i)}>Add Holding</Button>
             {(a.holdings || []).map((h, hi) => (
               <Grid key={hi} container spacing={1} alignItems="center" sx={{ mb: 1 }}>
-                <Grid item xs={12} md={4}><TextField fullWidth label="Ticker" value={h.ticker || ''} onChange={(e) => setHolding(i, hi, { ticker: e.target.value })} /></Grid>
-                <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Units" value={h.units} onChange={(e) => setHolding(i, hi, { units: Number(e.target.value) })} /></Grid>
-                <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Price" value={h.price} onChange={(e) => setHolding(i, hi, { price: Number(e.target.value) })} /></Grid>
+                <Grid item xs={12} md={3}><TextField fullWidth label="Ticker" value={h.ticker || ''} onChange={(e) => setHolding(i, hi, { ticker: e.target.value })} /></Grid>
+                <Grid item xs={12} md={3}><TextField fullWidth label="Name" value={h.name || ''} onChange={(e) => setHolding(i, hi, { name: e.target.value })} /></Grid>
+                <Grid item xs={12} md={2}><TextField type="number" fullWidth label="Units" value={h.units} onChange={(e) => setHolding(i, hi, { units: Number(e.target.value) })} /></Grid>
+                <Grid item xs={12} md={2}><TextField type="number" fullWidth label="Price" value={h.price} onChange={(e) => setHolding(i, hi, { price: Number(e.target.value) })} /></Grid>
                 <Grid item xs={12} md={2}><IconButton onClick={() => removeHolding(i, hi)}><DeleteIcon /></IconButton></Grid>
               </Grid>
             ))}

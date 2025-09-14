@@ -79,7 +79,7 @@ export function PortfolioSnapshotPage() {
         const items: { label: string; value: number }[] = []
         for (const h of a.holdings || []) {
           const v = h.units * h.price
-          const label = h.ticker || h.asset_class || 'Holding'
+          const label = h.ticker || h.name || h.asset_class || 'Holding'
           if (v > 0) items.push({ label, value: v })
         }
         if (a.cash_balance && a.cash_balance > 0) items.push({ label: 'Cash', value: a.cash_balance })
@@ -99,7 +99,7 @@ export function PortfolioSnapshotPage() {
                   <table className="table">
                     <thead>
                       <tr>
-                        <th>Ticker</th>
+                        <th>Ticker / Name</th>
                         <th className="num">Units</th>
                         <th className="num">Price</th>
                         <th className="num">Value</th>
@@ -108,7 +108,7 @@ export function PortfolioSnapshotPage() {
                     <tbody>
                       {(a.holdings || []).map((h, i) => (
                         <tr key={i}>
-                          <td>{h.ticker || h.asset_class || '-'}</td>
+                          <td>{h.ticker || h.name || h.asset_class || '-'}</td>
                           <td className="num">{h.units}</td>
                           <td className="num">{fmt(h.price)}</td>
                           <td className="num">{fmt(h.units * h.price)}</td>
