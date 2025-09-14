@@ -32,8 +32,12 @@ export function BuilderPage() {
   const [errors, setErrors] = useState<string[]>([])
   const { setSnapshot, snapshot } = useApp()
   const nav = useNavigate()
-
-  const pretty = useMemo(() => JSON.stringify(draft, null, 2), [draft])
+  // Heavy JSON preview only when shown
+  const [showPreview, setShowPreview] = useState(false)
+  const pretty = useMemo(() => (showPreview ? JSON.stringify(draft, null, 2) : ''), [draft, showPreview])
+  // Holdings UI state: per-account open flag and page index for pagination
+  const [holdingsOpen, setHoldingsOpen] = useState<Record<string, boolean>>({})
+  const [holdingsPage, setHoldingsPage] = useState<Record<string, number>>({})
 
   // Prefill from current snapshot if available and builder is empty
   useEffect(() => {
@@ -272,17 +276,45 @@ export function BuilderPage() {
               </Grid>
               <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Cash Balance" value={a.cash_balance || 0} onChange={(e) => setAccount(i, { cash_balance: Number(e.target.value) })} /></Grid>
             </Grid>
-            <Typography variant="subtitle2" sx={{ mt: 2 }}>Holdings</Typography>
-            <Button startIcon={<AddIcon />} size="small" sx={{ mb: 1 }} onClick={() => addHolding(i)}>Add Holding</Button>
-            {(a.holdings || []).map((h, hi) => (
-              <Grid key={hi} container spacing={1} alignItems="center" sx={{ mb: 1 }}>
-                <Grid item xs={12} md={3}><TextField fullWidth label="Ticker" value={h.ticker || ''} onChange={(e) => setHolding(i, hi, { ticker: e.target.value })} /></Grid>
-                <Grid item xs={12} md={3}><TextField fullWidth label="Name" value={h.name || ''} onChange={(e) => setHolding(i, hi, { name: e.target.value })} /></Grid>
-                <Grid item xs={12} md={2}><TextField type="number" fullWidth label="Units" value={h.units} onChange={(e) => setHolding(i, hi, { units: Number(e.target.value) })} /></Grid>
-                <Grid item xs={12} md={2}><TextField type="number" fullWidth label="Price" value={h.price} onChange={(e) => setHolding(i, hi, { price: Number(e.target.value) })} /></Grid>
-                <Grid item xs={12} md={2}><IconButton onClick={() => removeHolding(i, hi)}><DeleteIcon /></IconButton></Grid>
-              </Grid>
-            ))}
+            {(() => {
+              const total = (a.holdings || []).length
+              const open = !!holdingsOpen[a.id]
+              const pageSize = 50
+              const page = Math.max(0, Math.min((holdingsPage[a.id] || 0), Math.max(0, Math.ceil(total / pageSize) - 1)))
+              const pages = Math.max(1, Math.ceil(total / pageSize))
+              const start = page * pageSize
+              const end = Math.min(total, start + pageSize)
+              const slice = (a.holdings || []).slice(start, end)
+              return (
+                <>
+                  <Grid container spacing={1} alignItems="center" sx={{ mt: 2, mb: 1 }}>
+                    <Grid item>
+                      <Typography variant="subtitle2">Holdings ({total})</Typography>
+                    </Grid>
+                    <Grid item>
+                      <Button size="small" onClick={() => setHoldingsOpen((m) => ({ ...m, [a.id]: !open }))}>{open ? 'Hide' : 'Show'}</Button>
+                    </Grid>
+                    {open && total > pageSize && (
+                      <>
+                        <Grid item><Button size="small" onClick={() => setHoldingsPage((m) => ({ ...m, [a.id]: Math.max(0, page - 1) }))} disabled={page === 0}>Prev</Button></Grid>
+                        <Grid item><Typography color="text.secondary">Page {page + 1} / {pages}</Typography></Grid>
+                        <Grid item><Button size="small" onClick={() => setHoldingsPage((m) => ({ ...m, [a.id]: Math.min(pages - 1, page + 1) }))} disabled={page >= pages - 1}>Next</Button></Grid>
+                      </>
+                    )}
+                    {open && <Grid item><Button startIcon={<AddIcon />} size="small" onClick={() => addHolding(i)}>Add Holding</Button></Grid>}
+                  </Grid>
+                  {open && slice.map((h, hi) => (
+                    <Grid key={start + hi} container spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                      <Grid item xs={12} md={3}><TextField fullWidth label="Ticker" value={h.ticker || ''} onChange={(e) => setHolding(i, start + hi, { ticker: e.target.value })} /></Grid>
+                      <Grid item xs={12} md={3}><TextField fullWidth label="Name" value={h.name || ''} onChange={(e) => setHolding(i, start + hi, { name: e.target.value })} /></Grid>
+                      <Grid item xs={12} md={2}><TextField type="number" fullWidth label="Units" value={h.units} onChange={(e) => setHolding(i, start + hi, { units: Number(e.target.value) })} /></Grid>
+                      <Grid item xs={12} md={2}><TextField type="number" fullWidth label="Price" value={h.price} onChange={(e) => setHolding(i, start + hi, { price: Number(e.target.value) })} /></Grid>
+                      <Grid item xs={12} md={2}><IconButton onClick={() => removeHolding(i, start + hi)}><DeleteIcon /></IconButton></Grid>
+                    </Grid>
+                  ))}
+                </>
+              )
+            })()}
           </AccordionDetails>
         </Accordion>
       ))}
@@ -401,7 +433,10 @@ export function BuilderPage() {
       </Grid>
 
       <h2 style={{ marginTop: 16 }}>Preview JSON</h2>
-      <pre className="code-block" style={{ maxHeight: 320, overflow: 'auto' }}>{pretty}</pre>
+      <Button size="small" onClick={() => setShowPreview(v => !v)}>{showPreview ? 'Hide' : 'Show'} Preview</Button>
+      {showPreview && (
+        <pre className="code-block" style={{ maxHeight: 320, overflow: 'auto' }}>{pretty}</pre>
+      )}
     </section>
   )
 }
