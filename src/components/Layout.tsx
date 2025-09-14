@@ -17,9 +17,8 @@ const navItems = [
   { to: '/real-estate', label: 'Real Estate' },
   { to: '/social-security', label: 'Social Security' },
   { to: '/assumptions', label: 'Assumptions' },
-  { to: '/scenarios', label: 'Scenarios' },
   { to: '/results', label: 'Results' },
-  { to: '/sensitivity', label: 'Sensitivity' }
+  { to: '/what-ifs', label: 'What‑Ifs' }
 ]
 
 export const Layout: React.FC<React.PropsWithChildren> = ({ children }) => {

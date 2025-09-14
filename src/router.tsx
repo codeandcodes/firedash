@@ -6,9 +6,8 @@ import { ContributionsExpensesPage } from '@pages/ContributionsExpensesPage'
 import { RealEstatePage } from '@pages/RealEstatePage'
 import { SocialSecurityPage } from '@pages/SocialSecurityPage'
 import { AssumptionsPage } from '@pages/AssumptionsPage'
-import { ScenariosPage } from '@pages/ScenariosPage'
+import { WhatIfsPage } from '@pages/WhatIfsPage'
 import { ResultsPage } from '@pages/ResultsPage'
-import { SensitivityPage } from '@pages/SensitivityPage'
 import { HistoricalDataPage } from '@pages/HistoricalDataPage'
 
 export function AppRouter() {
@@ -23,9 +22,10 @@ export function AppRouter() {
       <Route path="/real-estate" element={<RealEstatePage />} />
       <Route path="/social-security" element={<SocialSecurityPage />} />
       <Route path="/assumptions" element={<AssumptionsPage />} />
-      <Route path="/scenarios" element={<ScenariosPage />} />
+      <Route path="/scenarios" element={<WhatIfsPage />} />
       <Route path="/results" element={<ResultsPage />} />
-      <Route path="/sensitivity" element={<SensitivityPage />} />
+      <Route path="/sensitivity" element={<WhatIfsPage />} />
+      <Route path="/what-ifs" element={<WhatIfsPage />} />
     </Routes>
   )
 }
