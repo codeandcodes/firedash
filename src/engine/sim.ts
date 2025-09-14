@@ -4,6 +4,7 @@ import { DEFAULT_RETURNS, computeAllocation } from './alloc'
 import { buildTimeline } from './schedule'
 import { DEFAULT_RETURNS as RETURNS } from './alloc'
 import { tryLoadHistorical, createBootstrapSampler } from './historical'
+import type { SimOptions as SO } from '@types/engine'
 
 function monthlyParams(mu: number, sigma: number) {
   const muLog = Math.log(1 + mu)
@@ -249,6 +250,82 @@ export function simulateSeries(snapshot: Snapshot, options: SimOptions & { maxPa
   }
 
   return { months, det: detSeries, mc }
+}
+
+// Optimized single-path runner that returns only total balances and basic stats.
+// Uses numeric indices and typed arrays for speed.
+const ASSET_IDX: Record<AssetClass, number> = {
+  US_STOCK: 0, INTL_STOCK: 1, BONDS: 2, REIT: 3, CASH: 4, REAL_ESTATE: 5, CRYPTO: 6, GOLD: 7
+}
+const IDX_ASSET: AssetClass[] = ['US_STOCK','INTL_STOCK','BONDS','REIT','CASH','REAL_ESTATE','CRYPTO','GOLD']
+
+export function simulatePathTotals(snapshot: Snapshot, options: SO = {}): { totals: number[]; success: boolean; terminal: number } {
+  const years = options.years ?? 40
+  const inflation = options.inflation ?? (snapshot.assumptions?.inflation_pct ?? 0.02)
+  const rebalFreq = options.rebalFreq ?? (snapshot.assumptions?.rebalancing?.frequency || 'annual')
+  const { weights, total } = computeAllocation(snapshot)
+  const timeline = buildTimeline(snapshot, years)
+
+  const rebalEvery = rebalFreq === 'monthly' ? 1 : rebalFreq === 'quarterly' ? 3 : 12
+  const muRE = realEstateMu(snapshot)
+  RETURNS.REAL_ESTATE.mu = muRE
+  const cashflows = new Map<number, number>()
+  for (const cf of timeline.cashflows) cashflows.set(cf.monthIndex, (cashflows.get(cf.monthIndex) || 0) + cf.amount)
+  const spendMonthly = Math.max(0, snapshot.retirement.expected_spend_monthly || 0)
+  const ssMonthly = (snapshot.social_security || []).reduce((s, ss) => Math.max(s, ss.monthly_amount || 0), 0)
+
+  const months = timeline.months
+  const inflM = Math.log(1 + inflation) / 12
+
+  // balances as typed array
+  const balances = new Float64Array(8)
+  for (const a of IDX_ASSET) balances[ASSET_IDX[a]] = total * (weights[a] || 0)
+
+  const paramsM: { muM: number; sigmaM: number }[] = new Array(8)
+  for (let i = 0; i < 8; i++) {
+    const p = (DEFAULT_RETURNS as any)[IDX_ASSET[i]] as ReturnParams
+    const { muM, sigmaM } = monthlyParams(p.mu, p.sigma)
+    paramsM[i] = { muM, sigmaM }
+  }
+
+  let sampler: { next(): Record<AssetClass, number> } | null = null
+  if (options.mcMode) {
+    if (options.mcMode === 'bootstrap') {
+      const hist = tryLoadHistorical()
+      if (hist) sampler = createBootstrapSampler(hist, months, IDX_ASSET, { blockMonths: options.bootstrapBlockMonths ?? 24, jitterSigma: options.bootstrapNoiseSigma ?? 0.005 })
+      else sampler = createRegimeSampler()
+    } else if (options.mcMode === 'regime') {
+      sampler = createRegimeSampler()
+    }
+  }
+
+  const totals = new Array<number>(months)
+  let minDrawdown = 0
+  for (let m = 0; m < months; m++) {
+    for (let i = 0; i < 8; i++) {
+      const p = paramsM[i]
+      const r = options.mcMode ? (sampler ? (sampler.next() as any)[IDX_ASSET[i]] : sampleReturn(p.muM, p.sigmaM)) : deterministicReturn(p.muM)
+      balances[i] *= 1 + r
+    }
+    let cf = cashflows.get(m) || 0
+    if (typeof timeline.rentalNetMonthly === 'number') cf += timeline.rentalNetMonthly
+    balances[ASSET_IDX.CASH] += cf
+    const spendNominal = spendMonthly * Math.exp(inflM * m)
+    const ssNominal = ssMonthly * Math.exp(inflM * m)
+    balances[ASSET_IDX.CASH] += ssNominal - spendNominal
+    if (rebalEvery > 0 && (m + 1) % rebalEvery === 0) {
+      // rebalance
+      let tot = 0
+      for (let i = 0; i < 8; i++) tot += balances[i]
+      if (tot > 0) for (const a of IDX_ASSET) balances[ASSET_IDX[a]] = (weights[a] || 0) * tot
+    }
+    let t = 0
+    for (let i = 0; i < 8; i++) t += balances[i]
+    totals[m] = t
+    minDrawdown = Math.min(minDrawdown, t)
+    if (t <= 0) return { totals, success: false, terminal: 0 }
+  }
+  return { totals, success: true, terminal: totals[months - 1] }
 }
 
 function runPathWithSeries(initial: number, targets: Record<AssetClass, number>, opt: LoopOptions) {
