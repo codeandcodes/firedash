@@ -64,7 +64,7 @@ export function PortfolioSnapshotPage() {
             const val = (a.holdings || []).reduce((h, lot) => h + lot.units * lot.price, 0) + (a.cash_balance || 0)
             return (
               <tr key={a.id}>
-                <td>{a.name || a.id}</td>
+                <td><a href={`#acct-${a.id}`}>{a.name || a.id}</a></td>
                 <td>{a.type}</td>
                 <td className="num">{fmt(val)}</td>
               </tr>
@@ -90,7 +90,7 @@ export function PortfolioSnapshotPage() {
         const totalA = slices.reduce((s, x) => s + x.value, 0)
         const data = slices.map((s, i) => ({ ...s, color: palette[i % palette.length] }))
         return (
-          <Card key={a.id} sx={{ mt: 2 }}>
+          <Card key={a.id} id={`acct-${a.id}`} sx={{ mt: 2, scrollMarginTop: '80px' }}>
             <CardContent>
               <Typography variant="subtitle1" gutterBottom>{a.name || a.id}</Typography>
               <Grid container spacing={2} alignItems="stretch">

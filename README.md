@@ -6,9 +6,9 @@ Firedash is a private, web-based dashboard for planning Financial Independence /
 - Snapshot-based, no live account linking; all data local by default
 - Monarch JSON importer with robust grouping (brokerage, crypto, other)
 - Deterministic and Monte Carlo simulations (Bootstrap, Regime, GBM)
-- Historical block bootstrap using long-run asset-class returns
+- Historical block bootstrap using long-run asset-class returns; in-app Historical Data upload with IndexedDB persistence and yearly performance charts + sanity stats
 - Real estate modeling (appreciation, mortgage, rental net flows)
-- Interactive charts (fan chart, deterministic line, stacked by asset class)
+- Interactive charts (fan chart, deterministic line, stacked by asset class); minor tick labels; currency axes abbreviated (K/M/B)
 - Material UI, dark/light theme, responsive UI
 
 ## Quick Start
@@ -27,7 +27,8 @@ Open the Vite dev URL (typically http://localhost:5173).
 
 - Results
   - Pick Monte Carlo mode (Bootstrap/Regime/GBM) in Scenario Options
-  - Adjust Years, Paths, Rebalancing, Inflation, and (for Bootstrap) Block/Noise
+  - Adjust Years, Paths, Rebalancing, Inflation, Max Workers; Bootstrap Block/Noise
+  - MC runs in Web Workers with a pool and progressive percentile updates; cache persists results
 
 ## Simulation Modes
 - Deterministic: Fixed real monthly returns from coarse annual means; useful as a baseline.
@@ -42,6 +43,7 @@ Open the Vite dev URL (typically http://localhost:5173).
 ```
 node scripts/parse_histret.mjs
 ```
+- In‑app: Upload CSV/JSON via Historical Data page (stored in IndexedDB), view yearly returns chart and sanity stats (means/vols/corrs).
 - Bootstrap controls live in Scenario Options (Block months, Noise σ).
 
 ## Monarch Importer
@@ -69,8 +71,10 @@ person?: { current_age? }
 ## UI Guide
 - Upload: Drag & drop snapshot JSON; routes to Builder on success
 - Builder: Import Monarch JSON; edit General/Retirement; Accounts/Holdings; Real Estate (with “Estimate” helper), Contributions, Expenses, Social Security; inline validation/tooltips; Load/Download
-- Snapshot: KPI cards; global allocation pie; per‑account pies by ticker + holdings tables; rounded, right‑aligned values
-- Results: Scenario Options (sliders/selects, MC mode, bootstrap tunables); charts (fan chart, deterministic line, stacked area); retirement marker; yearly percentile table
+- Snapshot: KPI cards; global allocation pie; per‑account pies by ticker + holdings tables; rounded, right‑aligned values; clicking an account name jumps to its details
+- Results: Scenario Options (sliders/selects, MC mode); worker pool + progressive MC percentiles; charts (fan chart with axes/hover, deterministic line with axes/hover, stacked by asset with minor ticks); retirement marker; yearly percentile table; currency axes abbreviated
+- Scenarios: Configure success targets and paths per eval. Computes suggested monthly drawdowns for Optimistic/Realistic/Conservative targets using worker pool; shows stacked Balance vs Principal charts per scenario with retirement marker
+- Historical: Upload/replace historical returns (IndexedDB); Yearly Returns chart with axes/hover; Sanity Stats table
 
 ## Commands
 - Dev: `make dev`  → Vite dev server
@@ -100,9 +104,9 @@ scripts/          # parse_histret.mjs
 
 ## Roadmap / Next Steps
 - Monthly series from Home Prices and Gold sheets; merge with annual returns
-- Replace window overrides (bootstrap block/noise) with context state
-- IndexedDB import for historical data (in‑app upload), CSV/JSON support
 - Withdrawal policies (guardrails/VPW), tax‑lot sale modeling, correlation tuning
+- Scenario enhancements: guardrails drawdown logic; budget categories; taxes
+- Persist/cold‑start cache warming for common scenarios
 
 ## Contributing
 - Keep changes focused and documented.
@@ -111,4 +115,3 @@ scripts/          # parse_histret.mjs
 
 ---
 Firedash is intended as a private planning tool; verify assumptions against your own data and risk preferences.
-
