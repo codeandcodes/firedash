@@ -331,7 +331,7 @@ export function simulatePathTotals(snapshot: Snapshot, options: SO = {}): { tota
 
   const paramsM: { muM: number; sigmaM: number }[] = new Array(8)
   for (let i = 0; i < 8; i++) {
-    const p = (DEFAULT_RETURNS as any)[IDX_ASSET[i]] as ReturnParams
+    const p = (RETURNS as any)[IDX_ASSET[i]]
     const { muM, sigmaM } = monthlyParams(p.mu, p.sigma)
     paramsM[i] = { muM, sigmaM }
   }
@@ -417,7 +417,7 @@ function runPathWithSeries(initial: number, targets: Record<AssetClass, number>,
     const cf = opt.cashflows.get(m) || 0
     balances.CASH += cf
     const spendNominal = spendReal * Math.exp(inflM * m)
-    const ssNominal = (timeline.ssStartMonth != null && m >= (timeline.ssStartMonth as number)) ? ssReal * Math.exp(inflM * m) : 0
+    const ssNominal = (opt.ssAt != null && m >= (opt.ssAt as number)) ? ssReal * Math.exp(inflM * m) : 0
     balances.CASH += ssNominal - spendNominal
     if (opt.rebalEvery > 0 && (m + 1) % opt.rebalEvery === 0) rebalance(balances, targets)
     const t = ASSET_CLASSES.reduce((s, k) => s + balances[k], 0)

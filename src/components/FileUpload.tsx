@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '@state/AppContext'
-import { resultsKey, scenariosKey, saveCache } from '@state/cache'
+import { resultsKey, scenariosKey, saveCache, loadCache } from '@state/cache'
 import { validateSnapshot } from '@types/schema'
 import { Box, Button, Typography } from '@mui/material'
 

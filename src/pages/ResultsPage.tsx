@@ -5,8 +5,7 @@ import { ScenarioOptions } from '@components/ScenarioOptions'
 import { FanChart } from '@components/charts/FanChart'
 import { LineChart } from '@components/charts/LineChart'
 import { StackedArea } from '@components/charts/StackedArea'
-import { YearlyPercentileTable } from '@components/YearlyPercentileTable'
-import { YearlyBreakdown } from '@components/YearlyBreakdown'
+import { YearlyBalanceSheet } from '@components/YearlyBalanceSheet'
 import type { MonteSummary } from '@types/engine'
 import { P2Quantile } from '@engine/quantile'
 import { LinearProgress, Box } from '@mui/material'
@@ -223,9 +222,7 @@ export function ResultsPage() {
             <LineChart series={series.det.total} years={simOptions.years} startYear={startYear} retAt={retAt} label="Deterministic Balance" />
             <h2>Deterministic Asset Breakdown</h2>
             <StackedArea byClass={series.det.byClass} years={simOptions.years} startYear={startYear} retAt={retAt} />
-            <h2>Yearly Percentiles</h2>
-            <YearlyPercentileTable months={series.months} p10={series.mc.p10} p25={series.mc.p25} p50={series.mc.p50} p75={series.mc.p75} p90={series.mc.p90} startYear={startYear} highlightYear={startYear && retAt != null ? startYear + Math.floor(retAt/12) : undefined} />
-            <YearlyBreakdown snapshot={snapshot} byClass={series.det.byClass} years={simOptions.years} inflation={simOptions.inflation} startYear={startYear} title="Yearly Asset Changes & Cash Flows" />
+            <YearlyBalanceSheet snapshot={snapshot} totals={series.det.total} years={simOptions.years} inflation={simOptions.inflation} startYear={startYear} />
           </>
         )}
         {loading && <p>Computing simulations…</p>}
