@@ -48,6 +48,8 @@ interface LoopOptions {
   retAt?: number
   rentalNetMonthly?: number
   mcMode?: 'bootstrap' | 'regime' | 'gbm'
+  bootstrapBlockMonths?: number
+  bootstrapNoiseSigma?: number
 }
 
 function zeroBalances(): Balances {
@@ -74,8 +76,8 @@ function runPath(initial: number, targets: Record<AssetClass, number>, opt: Loop
     if (opt.mcMode === 'bootstrap') {
       const hist = tryLoadHistorical()
       if (hist) {
-        const block = (options as any).bootstrapBlockMonths ?? 24
-        const noise = (options as any).bootstrapNoiseSigma ?? 0.005
+        const block = opt.bootstrapBlockMonths ?? 24
+        const noise = opt.bootstrapNoiseSigma ?? 0.005
         sampler = createBootstrapSampler(hist, opt.months, ASSET_CLASSES, { blockMonths: block, jitterSigma: noise })
       } else sampler = createRegimeSampler()
     } else if (opt.mcMode === 'regime') {
@@ -156,7 +158,7 @@ export function simulate(snapshot: Snapshot, options: SimOptions = {}): { summar
 
   const details: PathStats[] = []
   for (let i = 0; i < paths; i++) {
-    details.push(runPath(total, weights, { ...loopOpt, mcMode: options.mcMode || 'regime' }))
+    details.push(runPath(total, weights, { ...loopOpt, mcMode: options.mcMode || 'regime', bootstrapBlockMonths: options.bootstrapBlockMonths, bootstrapNoiseSigma: options.bootstrapNoiseSigma }))
   }
 
   const terminals = details.map((d) => d.terminal).sort((a, b) => a - b)
@@ -228,7 +230,7 @@ export function simulateSeries(snapshot: Snapshot, options: SimOptions & { maxPa
   // Monte Carlo series for total balances; compute percentiles per month
   const series: number[][] = []
   for (let i = 0; i < maxPaths; i++) {
-    const s = runPathWithSeries(total, weights, { ...loopOptBase, rentalNetMonthly: timeline.rentalNetMonthly, mcMode: options.mcMode || 'regime' }).total
+    const s = runPathWithSeries(total, weights, { ...loopOptBase, rentalNetMonthly: timeline.rentalNetMonthly, mcMode: options.mcMode || 'regime', bootstrapBlockMonths: options.bootstrapBlockMonths, bootstrapNoiseSigma: options.bootstrapNoiseSigma }).total
     series.push(s)
   }
   const months = timeline.months
@@ -265,8 +267,8 @@ function runPathWithSeries(initial: number, targets: Record<AssetClass, number>,
     if (opt.mcMode === 'bootstrap') {
       const hist = tryLoadHistorical()
       if (hist) {
-        const block = (options as any).bootstrapBlockMonths ?? 24
-        const noise = (options as any).bootstrapNoiseSigma ?? 0.005
+        const block = opt.bootstrapBlockMonths ?? 24
+        const noise = opt.bootstrapNoiseSigma ?? 0.005
         sampler = createBootstrapSampler(hist, opt.months, ASSET_CLASSES, { blockMonths: block, jitterSigma: noise })
       } else sampler = createRegimeSampler()
     } else if (opt.mcMode === 'regime') {
