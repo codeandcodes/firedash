@@ -268,9 +268,9 @@ export function ResultsPage() {
       {snapshot && (
         <>
         <ScenarioOptions />
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-          <span style={{ color: '#9aa4b2', fontSize: 12 }}>Percentile</span>
-          <ToggleButtonGroup size="small" exclusive value={quantile} onChange={(_e, v) => v && setQuantile(v)}>
+        <Box sx={(t) => ({ position: 'sticky', top: { xs: 56, sm: 64 }, zIndex: (t.zIndex.appBar || 1200) - 1, display: 'flex', alignItems: 'center', gap: 2, mb: 1, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', px: 1, py: 0.5, borderRadius: 1, boxShadow: t.palette.mode === 'light' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none' })}>
+          <span style={{ color: '#334155', fontSize: 12, fontWeight: 600 }}>Percentile</span>
+          <ToggleButtonGroup size="small" color="primary" exclusive value={quantile} onChange={(_e, v) => v && setQuantile(v)}>
             <ToggleButton value="p10" title="10th percentile (conservative)">P10</ToggleButton>
             <ToggleButton value="p25" title="25th percentile">P25</ToggleButton>
             <ToggleButton value="p50" title="Median (50th percentile)">Median</ToggleButton>

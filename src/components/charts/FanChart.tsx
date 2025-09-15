@@ -154,14 +154,23 @@ export const FanChart: React.FC<FanChartProps> = ({ p10, p25, p50, p75, p90, wid
 
       {/* Legend */}
       <g transform={`translate(${W - 220}, ${padTop + 8})`} fontSize={10} fill="#334155">
-        <rect x={0} y={0} width={210} height={44} fill="#FFFFFF" stroke="#E5E7EB" rx={6} />
+        <rect x={0} y={0} width={210} height={60} fill="#FFFFFF" stroke="#E5E7EB" rx={6} />
         <g transform="translate(8,6)">
           <rect width={14} height={6} y={2} fill="#4F7BFF22" />
           <text x={20} y={8}>P10–P90</text>
           <rect width={14} height={6} y={18} fill="#4F7BFF44" />
           <text x={20} y={24}>P25–P75</text>
-          <line x1={2} x2={16} y1={34} y2={34} stroke="#4F7BFF" strokeWidth={2} />
+          <line x1={2} x2={16} y1={34} y2={34} stroke="#93C5FD" strokeWidth={2} />
           <text x={20} y={36}>Median</text>
+          {(() => {
+            const label = highlight === 'p10' ? 'P10' : highlight === 'p25' ? 'P25' : highlight === 'p75' ? 'P75' : highlight === 'p90' ? 'P90' : 'P50'
+            return (
+              <g>
+                <line x1={2} x2={16} y1={50} y2={50} stroke="#2563EB" strokeWidth={3} />
+                <text x={20} y={52}>Selected: {label}</text>
+              </g>
+            )
+          })()}
         </g>
       </g>
 

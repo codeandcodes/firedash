@@ -45,7 +45,7 @@ This document summarizes the major changes, architecture, and key functions so w
 - ScenarioOptions: sliders for years/paths/inflation and percentile selector; Max Workers; Select for rebalancing; MC Mode (Bootstrap/Regime/GBM); block/noise controls for Bootstrap; debounced sliders and tooltips.
 - BuilderPage: Monarch import; Accordions for General/Retirement; Accounts (Ticker/Name inputs), Real Estate (with estimate helper), Contributions, Expenses, Social Security; pagination for large holdings; lazy preview; inline validation/tooltips.
 - Snapshot: KPI cards; global allocation pie; per-account pies and holdings; clicking account name jumps to its detail card.
-- Results: Monte Carlo worker pool with progressive updates using P^2 quantiles; per‑year end‑balance aggregation (P10/P25/P50/P75/P90) and Alive_Frac (paths remaining). Yearly Balance Sheet with CSV export and retirement badges; Yearly Flows chart with centered bars and retirement marker; fan chart width aligned to flows. Caching stores yearEnds and aliveFrac.
+- Results: Monte Carlo worker pool with progressive updates using P^2 quantiles; per‑year end‑balance aggregation (P10/P25/P50/P75/P90) and Alive_Frac (paths remaining). Yearly Balance Sheet with CSV export and retirement badges; Yearly Flows chart with centered bars and retirement marker; fan chart highlights the selected percentile and the summary card shows its final balance. Caching stores yearEnds and aliveFrac.
 - What‑Ifs: Unified Sensitivity + Scenarios under a single page; baseline vs variant comparison; drawdown search for Optimistic/Realistic/Conservative targets; charts use deterministic series; routes `/what-ifs`, `/scenarios`, `/sensitivity` all resolve here.
 
 ## Calibration Notes
@@ -87,6 +87,6 @@ This document summarizes the major changes, architecture, and key functions so w
 - Combined Sensitivity and Scenarios into What‑Ifs; routed aliases and updated nav.
 - Corrected Social Security start (claim age) and real estate cashflow modeling (mortgage payoff, carrying costs, no double-count in Extra).
 - Added Real Estate amortization panel (schedule/sparkline).
-- Overhauled Results with per‑year quantiles, Yearly Balance Sheet/Flows, Paths Remaining, CSV export; fixed NaN/zero collapse and depletion handling.
+- Overhauled Results with per‑year quantiles, Yearly Balance Sheet/Flows, Paths Remaining, CSV export; fixed NaN/zero collapse and depletion handling; removed deterministic panel and made percentile selector sticky with highlighted line on the fan chart.
 - Builder optimizations (pagination, lazy preview) and Holding Name field; Snapshot shows Ticker or Name.
 - MultiLineChart tooltip guards undefined values.

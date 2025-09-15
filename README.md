@@ -33,11 +33,9 @@ Open the Vite dev URL (typically http://localhost:5173).
   - MC runs in Web Workers with a pool and progressive percentile updates; cache persists results
 
 ## Simulation Modes
-- Deterministic: Fixed real monthly returns from coarse annual means; useful as a baseline.
-- Monte Carlo:
+- Monte Carlo (Results):
   - Bootstrap (recommended): Block‑bootstrap monthly returns from `data/historical_returns.json` to preserve realistic sequences (bear/flat/rebound). When the dataset is annual expanded to monthly, the engine detects it and adds calibrated monthly dispersion.
-  - Regime: Markov chain across bull/bear/stagnation with persistent drawdowns, per‑asset mu/vol per regime.
-  - GBM: Classic independent lognormal sampling per asset class.
+- Deterministic (internal/diagnostic): used in What‑Ifs and some helpers, but not shown on Results.
 
 ## Historical Data
 - Supplied via `data/historical_returns.json`. An example format is in `data/historical_returns.example.json`.
@@ -74,7 +72,7 @@ person?: { current_age? }
 - Upload: Drag & drop snapshot JSON; routes to Builder on success
 - Builder: Import Monarch JSON; edit General/Retirement; Accounts/Holdings (Ticker/Name); Real Estate (with “Estimate” helper), Contributions, Expenses, Social Security; inline validation/tooltips; Load/Download. Large holdings lists paginate and preview is lazy for speed.
 - Snapshot: KPI cards; global allocation pie; per‑account pies by ticker + holdings tables; rounded, right‑aligned values; clicking an account name jumps to its details
-- Results: Scenario Options (sliders/selects, MC mode, percentile selector). Worker pool + progressive MC percentiles; per‑year aggregation (P10..P90). Yearly Balance Sheet with CSV export (+ Alive_Frac), Yearly Flows chart (returns/income vs expenditures, centered bars), retirement markers and row highlighting. Advanced section includes Paths Remaining.
+- Results: Scenario Options (sliders/selects, percentile selector). Worker pool + progressive MC percentiles (historical bootstrap only); per‑year aggregation (P10..P90). Yearly Balance Sheet with CSV export (+ Alive_Frac), Yearly Flows chart (returns/income vs expenditures), retirement markers. The percentile selector highlights the selected line on the fan chart and updates the final-balance summary.
 - What‑Ifs: Unified Sensitivity + Scenarios. Compare Baseline vs Variant (inflation, spend, retirement age) and run monthly drawdown search for success targets (Optimistic/Realistic/Conservative). Charts use deterministic series for clarity.
 - Historical: Upload/replace historical returns (IndexedDB); Yearly Returns chart with axes/hover; Sanity Stats table
 
