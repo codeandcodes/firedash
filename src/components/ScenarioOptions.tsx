@@ -70,38 +70,24 @@ export const ScenarioOptions: React.FC = () => {
                     onChange={(_, v) => setWorkersLocal(v as number)}
                     onChangeCommitted={(_, v) => setSimOptions({ maxWorkers: v as number })} />
           </Grid>
+          {/* Bootstrap controls (historical sampling) */}
           <Grid item xs={12} md={3}>
-            <FormControl fullWidth title="Monte Carlo engine: bootstrap samples historical returns, regime simulates market regimes, GBM uses geometric Brownian motion">
-              <InputLabel id="mc-label">MC Mode</InputLabel>
-              <Select labelId="mc-label" label="MC Mode" value={simOptions.mcMode}
-                      onChange={(e) => setSimOptions({ mcMode: e.target.value as any })}>
-                <MenuItem value="bootstrap">Bootstrap (historical)</MenuItem>
-                <MenuItem value="regime">Regime</MenuItem>
-                <MenuItem value="gbm">GBM</MenuItem>
-              </Select>
-            </FormControl>
+            <Tooltip title="Sampling block length to preserve multi-month patterns">
+              <Typography gutterBottom>Block (months): {simOptions.bootstrapBlockMonths}</Typography>
+            </Tooltip>
+            <Slider min={6} max={60} step={1} value={simOptions.bootstrapBlockMonths}
+                    onChange={(_, v) => setSimOptions({ bootstrapBlockMonths: v as number, mcMode: 'bootstrap' })} />
           </Grid>
-          {simOptions.mcMode === 'bootstrap' && (
-            <>
-              <Grid item xs={12} md={3}>
-                <Tooltip title="Sampling block length to preserve multi-month patterns">
-                  <Typography gutterBottom>Block (months): {simOptions.bootstrapBlockMonths}</Typography>
-                </Tooltip>
-                <Slider min={6} max={60} step={1} value={simOptions.bootstrapBlockMonths}
-                        onChange={(_, v) => setSimOptions({ bootstrapBlockMonths: v as number })} />
-              </Grid>
-              <Grid item xs={12} md={3}>
-                <Tooltip title="Extra random noise added to sampled returns">
-                  <Typography gutterBottom>Noise σ: {simOptions.bootstrapNoiseSigma.toFixed(3)}</Typography>
-                </Tooltip>
-                <Slider min={0} max={0.03} step={0.001} value={simOptions.bootstrapNoiseSigma}
-                        onChange={(_, v) => setSimOptions({ bootstrapNoiseSigma: v as number })} />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <Typography color="text.secondary">Place historical data at <code>data/historical_returns.json</code> (see example file).</Typography>
-              </Grid>
-            </>
-          )}
+          <Grid item xs={12} md={3}>
+            <Tooltip title="Extra random noise added to sampled returns">
+              <Typography gutterBottom>Noise σ: {simOptions.bootstrapNoiseSigma.toFixed(3)}</Typography>
+            </Tooltip>
+            <Slider min={0} max={0.03} step={0.001} value={simOptions.bootstrapNoiseSigma}
+                    onChange={(_, v) => setSimOptions({ bootstrapNoiseSigma: v as number, mcMode: 'bootstrap' })} />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Typography color="text.secondary">Monte Carlo uses historical bootstrap. Place data at <code>data/historical_returns.json</code>.</Typography>
+          </Grid>
         </Grid>
 
         {snapshot && (

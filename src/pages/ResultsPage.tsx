@@ -1,6 +1,6 @@
 /**
  * Results page
- * - Runs deterministic + Monte Carlo sims via workers; progressive P^2 percentile updates.
+ * - Runs Monte Carlo (historical bootstrap) via workers; progressive P^2 percentile updates.
  * - Aggregates per-year end balances (P10/P25/P50/P75/P90) and Alive_Frac (paths remaining).
  * - Renders FanChart, Yearly Balance Sheet (with CSV export) and Yearly Flows chart; advanced Paths Remaining view.
  */
@@ -101,8 +101,8 @@ export function ResultsPage() {
       setProgress(null)
       return
     }
-    // First compute deterministic + scaffolding
-    simWorkerRef.current.postMessage({ snapshot, options: { years: simOptions.years, inflation: simOptions.inflation, rebalFreq: simOptions.rebalFreq, paths: Math.min(simOptions.paths, 1000), mcMode: simOptions.mcMode, bootstrapBlockMonths: simOptions.bootstrapBlockMonths, bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma, maxPathsForSeries: Math.min(simOptions.paths, 1000) } })
+    // Seed cache + initial MC percentiles (bootstrap only)
+    simWorkerRef.current.postMessage({ snapshot, options: { years: simOptions.years, inflation: simOptions.inflation, rebalFreq: simOptions.rebalFreq, paths: Math.min(simOptions.paths, 1000), mcMode: 'bootstrap', bootstrapBlockMonths: simOptions.bootstrapBlockMonths, bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma, maxPathsForSeries: Math.min(simOptions.paths, 1000) } })
     // Then start MC pool progressively updating percentiles
     // We will fill mcPercentiles with P2 estimators per month
     const months = Math.max(1, simOptions.years * 12)
@@ -221,7 +221,7 @@ export function ResultsPage() {
         }
       }
       poolRefs.current.push(w)
-      w.postMessage({ snapshot, options: { years: simOptions.years, inflation: simOptions.inflation, rebalFreq: simOptions.rebalFreq, mcMode: simOptions.mcMode, bootstrapBlockMonths: simOptions.bootstrapBlockMonths, bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma }, count, batchSize: 10 })
+      w.postMessage({ snapshot, options: { years: simOptions.years, inflation: simOptions.inflation, rebalFreq: simOptions.rebalFreq, mcMode: 'bootstrap', bootstrapBlockMonths: simOptions.bootstrapBlockMonths, bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma }, count, batchSize: 10 })
     }
   }, [snapshot, simOptions])
 
