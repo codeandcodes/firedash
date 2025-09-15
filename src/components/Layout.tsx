@@ -1,24 +1,34 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { AppBar, Box, CssBaseline, Divider, Drawer, IconButton, List, ListItem, ListItemButton, ListItemText, Toolbar, Typography } from '@mui/material'
+import { AppBar, Box, CssBaseline, Divider, Drawer, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Toolbar, Typography } from '@mui/material'
 import MenuIcon from '@mui/icons-material/Menu'
 import Brightness4Icon from '@mui/icons-material/Brightness4'
 import Brightness7Icon from '@mui/icons-material/Brightness7'
 import { useTheme } from '@mui/material/styles'
 import { useThemeMode } from '@state/ThemeContext'
+import CloudUploadIcon from '@mui/icons-material/CloudUpload'
+import QueryStatsIcon from '@mui/icons-material/QueryStats'
+import BuildIcon from '@mui/icons-material/Build'
+import PieChartOutlineIcon from '@mui/icons-material/PieChartOutline'
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet'
+import HomeWorkIcon from '@mui/icons-material/HomeWork'
+import ElderlyIcon from '@mui/icons-material/Elderly'
+import TuneIcon from '@mui/icons-material/Tune'
+import InsightsIcon from '@mui/icons-material/Insights'
+import AutoGraphIcon from '@mui/icons-material/AutoGraph'
 
 const drawerWidth = 240
 const navItems = [
-  { to: '/upload', label: 'Upload' },
-  { to: '/historical', label: 'Historical Data' },
-  { to: '/builder', label: 'Builder' },
-  { to: '/snapshot', label: 'Snapshot' },
-  { to: '/contrib-expenses', label: 'Contrib & Expenses' },
-  { to: '/real-estate', label: 'Real Estate' },
-  { to: '/social-security', label: 'Social Security' },
-  { to: '/assumptions', label: 'Assumptions' },
-  { to: '/results', label: 'Results' },
-  { to: '/what-ifs', label: 'What‑Ifs' }
+  { to: '/upload', label: 'Upload', icon: <CloudUploadIcon fontSize="small" /> },
+  { to: '/historical', label: 'Historical Data', icon: <QueryStatsIcon fontSize="small" /> },
+  { to: '/builder', label: 'Builder', icon: <BuildIcon fontSize="small" /> },
+  { to: '/snapshot', label: 'Snapshot', icon: <PieChartOutlineIcon fontSize="small" /> },
+  { to: '/contrib-expenses', label: 'Contrib & Expenses', icon: <AccountBalanceWalletIcon fontSize="small" /> },
+  { to: '/real-estate', label: 'Real Estate', icon: <HomeWorkIcon fontSize="small" /> },
+  { to: '/social-security', label: 'Social Security', icon: <ElderlyIcon fontSize="small" /> },
+  { to: '/assumptions', label: 'Assumptions', icon: <TuneIcon fontSize="small" /> },
+  { to: '/results', label: 'Results', icon: <InsightsIcon fontSize="small" /> },
+  { to: '/what-ifs', label: 'What‑Ifs', icon: <AutoGraphIcon fontSize="small" /> }
 ]
 
 export const Layout: React.FC<React.PropsWithChildren> = ({ children }) => {
@@ -29,12 +39,13 @@ export const Layout: React.FC<React.PropsWithChildren> = ({ children }) => {
 
   const drawer = (
     <div>
-      <Toolbar><Typography variant="h6" color="primary">Firedash</Typography></Toolbar>
+      <Toolbar><Typography variant="h6" color="primary">🔥 Firedash</Typography></Toolbar>
       <Divider />
       <List>
         {navItems.map((item) => (
           <ListItem key={item.to} disablePadding>
             <ListItemButton component={Link} to={item.to} selected={pathname === item.to} onClick={() => setMobileOpen(false)}>
+              {item.icon && <ListItemIcon sx={{ minWidth: 32 }}>{item.icon}</ListItemIcon>}
               <ListItemText primary={item.label} />
             </ListItemButton>
           </ListItem>

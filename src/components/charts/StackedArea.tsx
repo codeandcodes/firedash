@@ -64,9 +64,9 @@ export const StackedArea: React.FC<{ byClass: Record<AssetClass, number[]>; widt
   }
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H}>
-      <rect x={0} y={0} width={W} height={H} fill="#101626" rx={8} />
+      <rect x={0} y={0} width={W} height={H} fill="#FFFFFF" rx={8} />
       {/* Gridlines */}
-      <g stroke="#1f2940" strokeWidth={1} opacity={0.9}>
+      <g stroke="#E5E7EB" strokeWidth={1} opacity={1}>
         {[0,0.25,0.5,0.75,1].map((t, idx) => (<line key={idx} x1={padLeft} x2={W - padRight} y1={y(t*maxY)} y2={y(t*maxY)} />))}
         {/* Minor Y gridlines */}
         {[0.125,0.375,0.625,0.875].map((t, idx) => (<line key={`my${idx}`} x1={padLeft} x2={W - padRight} y1={y(t*maxY)} y2={y(t*maxY)} opacity={0.4} />))}
@@ -90,7 +90,7 @@ export const StackedArea: React.FC<{ byClass: Record<AssetClass, number[]>; widt
         })()}
       </g>
       {/* X-axis labels */}
-      <g fill="#9aa4b2" fontSize={10}>
+      <g fill="#6B7280" fontSize={10}>
         {(() => {
           const yrs = years ?? Math.max(1, Math.round(months/12))
           const maxTicks = Math.max(2, Math.min(10, Math.round((W - padLeft - padRight) / 80)))
@@ -116,7 +116,7 @@ export const StackedArea: React.FC<{ byClass: Record<AssetClass, number[]>; widt
         })()}
       </g>
       {/* Axis labels */}
-      <g fill="#9aa4b2" fontSize={11}>
+      <g fill="#6B7280" fontSize={11}>
         <text x={W/2} y={H - 2} textAnchor="middle">{xLabel}</text>
         <text transform={`translate(12 ${H/2}) rotate(-90)`} textAnchor="middle">{yLabel}</text>
       </g>
@@ -124,14 +124,14 @@ export const StackedArea: React.FC<{ byClass: Record<AssetClass, number[]>; widt
       {/* Retirement marker */}
       {typeof retAt === 'number' && retAt >= 0 && (
         <g>
-          <line x1={x(Math.min(months-1, retAt))} x2={x(Math.min(months-1, retAt))} y1={padTop} y2={H - padBottom} stroke="#f5a97f" strokeDasharray="6 3" />
-          <text x={x(Math.min(months-1, retAt)) + 6} y={padTop + 12} fill="#f5a97f" fontSize={10}>Retirement</text>
+          <line x1={x(Math.min(months-1, retAt))} x2={x(Math.min(months-1, retAt))} y1={padTop} y2={H - padBottom} stroke="#F59E0B" strokeDasharray="6 3" />
+          <text x={x(Math.min(months-1, retAt)) + 6} y={padTop + 12} fill="#F59E0B" fontSize={10}>Retirement</text>
         </g>
       )}
       <g>{layers}</g>
       {/* Legend */}
-      <g transform={`translate(${W - 220}, ${padTop + 8})`} fontSize={10} fill="#c8d3e6">
-        <rect x={0} y={0} width={210} height={keys.length*16 + 16} fill="#0b1020" stroke="#1f2940" rx={6} />
+      <g transform={`translate(${W - 220}, ${padTop + 8})`} fontSize={10} fill="#334155">
+        <rect x={0} y={0} width={210} height={keys.length*16 + 16} fill="#FFFFFF" stroke="#E5E7EB" rx={6} />
         <g transform="translate(8,6)">
           {keys.map((k, i) => (
             <g key={k} transform={`translate(0, ${i*16})`}>
@@ -142,7 +142,7 @@ export const StackedArea: React.FC<{ byClass: Record<AssetClass, number[]>; widt
         </g>
       </g>
       {/* Y-axis labels */}
-      <g fill="#9aa4b2" fontSize={10}>
+      <g fill="#6B7280" fontSize={10}>
         {[0,0.25,0.5,0.75,1].map((t, idx) => (<text key={`yl${idx}`} x={padLeft - 6} y={y(t*maxY) + 3} textAnchor="end">{fmtAbbrev(t*maxY)}</text>))}
         {[0.125,0.375,0.625,0.875].map((t, idx) => (<text key={`myl${idx}`} x={padLeft - 6} y={y(t*maxY) + 3} textAnchor="end" opacity={0.6} fontSize={9}>{fmtAbbrev(t*maxY)}</text>))}
       </g>

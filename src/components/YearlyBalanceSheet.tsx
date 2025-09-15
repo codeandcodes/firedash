@@ -170,7 +170,7 @@ export const YearlyBalanceSheet: React.FC<{
             const isRetStart = data.retYearIdx != null && y === data.retYearIdx
             const isRetired = data.retYearIdx != null && y >= (data.retYearIdx as number)
             return (
-              <tr key={y} style={isRetired ? { background: isRetStart ? '#1b2238' : '#161d2f' } : undefined}>
+              <tr key={y} style={isRetired ? { background: isRetStart ? '#FFF7ED' : '#F0FDF4' } : undefined}>
                 <td style={{ verticalAlign: 'top' }}>
                   <div>{yearLabel}</div>
                   {isRetStart && (
@@ -178,10 +178,11 @@ export const YearlyBalanceSheet: React.FC<{
                       <span style={{
                         padding: '2px 6px',
                         fontSize: 11,
-                        color: '#f5a97f',
-                        border: '1px solid #f5a97f',
+                        color: '#B45309',
+                        border: '1px solid #F59E0B',
                         borderRadius: 10,
-                        whiteSpace: 'nowrap'
+                        whiteSpace: 'nowrap',
+                        background: '#FFFBEB'
                       }}>
                         Retirement starts
                       </span>
@@ -192,10 +193,11 @@ export const YearlyBalanceSheet: React.FC<{
                       <span style={{
                         padding: '2px 6px',
                         fontSize: 11,
-                        color: '#a6da95',
-                        border: '1px solid #a6da95',
+                        color: '#166534',
+                        border: '1px solid #22C55E',
                         borderRadius: 10,
-                        whiteSpace: 'nowrap'
+                        whiteSpace: 'nowrap',
+                        background: '#DCFCE7'
                       }}>
                         Retired
                       </span>
@@ -204,8 +206,8 @@ export const YearlyBalanceSheet: React.FC<{
                 </td>
                 <td style={{ verticalAlign: 'top' }}>{fmt(data.startBal[y])}</td>
                 <td style={{ verticalAlign: 'top' }}>
-                  <div style={{ color: '#a6da95' }}>{fmt(retTotal)}</div>
-                  <div style={{ color: '#a6da95', fontSize: 12 }}>
+                  <div style={{ color: '#14532D' }}>{fmt(retTotal)}</div>
+                  <div style={{ color: '#166534', fontSize: 12 }}>
                     <div>US {fmt(r.byClass.US_STOCK||0)}</div>
                     <div>Intl {fmt(r.byClass.INTL_STOCK||0)}</div>
                     <div>Bonds {fmt(r.byClass.BONDS||0)}</div>
@@ -213,16 +215,16 @@ export const YearlyBalanceSheet: React.FC<{
                   </div>
                 </td>
                 <td style={{ verticalAlign: 'top' }}>
-                  <div style={{ color: '#a6da95' }}>{fmt(inc)}</div>
-                  <div style={{ color: '#a6da95', fontSize: 12 }}>
+                  <div style={{ color: '#166534' }}>{fmt(inc)}</div>
+                  <div style={{ color: '#166534', fontSize: 12 }}>
                     <div>Contrib {fmt(data.contrib[y])}</div>
                     <div>SS {fmt(data.ss[y])}</div>
                     <div>Rent {fmt(data.perYear[y].rentNet)}</div>
                   </div>
                 </td>
                 <td style={{ verticalAlign: 'top' }}>
-                  <div style={{ color: '#f28fad' }}>{fmt(exp)}</div>
-                  <div style={{ color: '#f28fad', fontSize: 12 }}>
+                  <div style={{ color: '#B91C1C' }}>{fmt(exp)}</div>
+                  <div style={{ color: '#991B1B', fontSize: 12 }}>
                     <div>Spend {fmt(data.spend[y])}</div>
                     <div>Mortgage {fmt(data.perYear[y].mortgage)}</div>
                     <div>RE Costs {fmt(data.perYear[y].reCarry)}</div>

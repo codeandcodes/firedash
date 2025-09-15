@@ -71,8 +71,8 @@ export const LineChart: React.FC<{ series: number[]; width?: number; height?: nu
            setHoverI(Math.round(t * (months - 1)))
          }}
          onMouseLeave={() => setHoverI(null)}>
-      <rect x={0} y={0} width={W} height={H} fill="#101626" rx={8} />
-      <g stroke="#1f2940" strokeWidth={1} opacity={0.9}>
+      <rect x={0} y={0} width={W} height={H} fill="#FFFFFF" rx={8} />
+      <g stroke="#E5E7EB" strokeWidth={1} opacity={1}>
         {yTicks.map((t, idx) => (<line key={idx} x1={padLeft} x2={W - padRight} y1={y(t.v)} y2={y(t.v)} />))}
         {xTicks.map((t, idx) => (<line key={idx} y1={padTop} y2={H - padBottom} x1={x(t.i)} x2={x(t.i)} />))}
         {/* Minor gridlines */}
@@ -87,27 +87,27 @@ export const LineChart: React.FC<{ series: number[]; width?: number; height?: nu
         </g>
       )}
       {/* Axis labels */}
-      <g fill="#9aa4b2" fontSize={11}>
+      <g fill="#6B7280" fontSize={11}>
         <text x={W/2} y={H - 2} textAnchor="middle">{xLabel}</text>
         <text transform={`translate(12 ${H/2}) rotate(-90)`} textAnchor="middle">{yLabel}</text>
       </g>
-      <g fill="#9aa4b2" fontSize="10">
+      <g fill="#6B7280" fontSize="10">
         {xTicks.map((t, idx) => (<text key={idx} x={x(t.i)} y={H - 6} textAnchor="middle">{t.label}</text>))}
         {minorXTicks.map((t, idx) => (<text key={`mxl${idx}`} x={x(t.i)} y={H - 6} textAnchor="middle" opacity={0.6} fontSize={9}>{t.label}</text>))}
         {yTicks.map((t, idx) => (<text key={`yl${idx}`} x={padLeft - 6} y={y(t.v) + 3} textAnchor="end">{t.label}</text>))}
         {minorYTicks.map((t, idx) => (<text key={`myl${idx}`} x={padLeft - 6} y={y(t.v) + 3} textAnchor="end" opacity={0.6} fontSize={9}>{t.label}</text>))}
-        <text x={W / 2} y={14} textAnchor="middle" fill="#c8d3e6">{label || 'Balance over time'}</text>
+        <text x={W / 2} y={14} textAnchor="middle" fill="#334155">{label || 'Balance over time'}</text>
       </g>
       {hover && (
         <g>
           <line x1={hover.x} x2={hover.x} y1={padTop} y2={H - padBottom} stroke={color} strokeDasharray="4 3" opacity={0.6} />
           <circle cx={hover.x} cy={hover.y} r={3} fill={color} />
           <g transform={`translate(${Math.min(W - 180, hover.x + 8)}, ${Math.max(padTop + 8, hover.y - 10)})`}>
-            <rect width={160} height={48} fill="#0b1020" stroke="#1f2940" rx={6} />
-            <text x={8} y={16} fill="#c8d3e6" fontSize={11}>
+            <rect width={160} height={48} fill="#FFFFFF" stroke="#E5E7EB" rx={6} />
+            <text x={8} y={16} fill="#334155" fontSize={11}>
               {startYear != null ? `${startYear + Math.floor(hover.i/12)} (m${(hover.i%12)+1})` : `Month ${hover.i} (${Math.round(hover.i/12)}y)`}
             </text>
-            <text x={8} y={32} fill="#9aa4b2" fontSize={11}>Value: ${Math.round(hover.v).toLocaleString()}</text>
+            <text x={8} y={32} fill="#475569" fontSize={11}>Value: ${Math.round(hover.v).toLocaleString()}</text>
           </g>
         </g>
       )}

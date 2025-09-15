@@ -101,10 +101,10 @@ export const FanChart: React.FC<FanChartProps> = ({ p10, p25, p50, p75, p90, wid
            setHoverI(Math.round(t * (months - 1)))
          }}
          onMouseLeave={() => setHoverI(null)}>
-      <rect x={0} y={0} width={W} height={H} fill="#101626" rx={8} />
+      <rect x={0} y={0} width={W} height={H} fill="#FFFFFF" rx={8} />
 
       {/* Gridlines */}
-      <g stroke="#1f2940" strokeWidth={1} opacity={0.9}>
+      <g stroke="#E5E7EB" strokeWidth={1} opacity={1}>
         {yTicks.map((t, idx) => (
           <line key={idx} x1={padLeft} x2={W - padRight} y1={y(t.v)} y2={y(t.v)} />
         ))}
@@ -116,42 +116,42 @@ export const FanChart: React.FC<FanChartProps> = ({ p10, p25, p50, p75, p90, wid
       </g>
 
       <g>
-        <path d={areaPath(p90, p10)} fill="#7aa2f733" stroke="none" />
-        <path d={areaPath(p75, p25)} fill="#7aa2f755" stroke="none" />
-        <path d={linePath(p50)} fill="none" stroke="#7aa2f7" strokeWidth={2} />
+        <path d={areaPath(p90, p10)} fill="#4F7BFF22" stroke="none" />
+        <path d={areaPath(p75, p25)} fill="#4F7BFF44" stroke="none" />
+        <path d={linePath(p50)} fill="none" stroke="#4F7BFF" strokeWidth={2} />
       </g>
 
       {/* Retirement marker */}
       {typeof retAt === 'number' && retAt >= 0 && (
         <g>
-          <line x1={x(Math.min(months-1, retAt))} x2={x(Math.min(months-1, retAt))} y1={padTop} y2={H - padBottom} stroke="#f5a97f" strokeDasharray="6 3" />
-          <text x={x(Math.min(months-1, retAt)) + 6} y={padTop + 12} fill="#f5a97f" fontSize={10}>Retirement</text>
+          <line x1={x(Math.min(months-1, retAt))} x2={x(Math.min(months-1, retAt))} y1={padTop} y2={H - padBottom} stroke="#F59E0B" strokeDasharray="6 3" />
+          <text x={x(Math.min(months-1, retAt)) + 6} y={padTop + 12} fill="#F59E0B" fontSize={10}>Retirement</text>
         </g>
       )}
 
       {/* Axes labels and legend */}
-      <g fill="#9aa4b2" fontSize="10">
+      <g fill="#6B7280" fontSize="10">
         <text x={4} y={padTop + 10}>{maxLabel}</text>
         <text x={4} y={H - 8}>0</text>
         {xTicks.map((t, idx) => (<text key={idx} x={x(t.i)} y={H - 6} textAnchor="middle">{t.label}</text>))}
         {minorXTicks.map((t, idx) => (<text key={`mxl${idx}`} x={x(t.i)} y={H - 6} textAnchor="middle" opacity={0.6} fontSize={9}>{t.label}</text>))}
-        {title && <text x={W / 2} y={14} textAnchor="middle" fill="#c8d3e6">{title}</text>}
+        {title && <text x={W / 2} y={14} textAnchor="middle" fill="#334155">{title}</text>}
       </g>
       {/* Axis titles */}
-      <g fill="#9aa4b2" fontSize={11}>
+      <g fill="#6B7280" fontSize={11}>
         <text x={W/2} y={H - 2} textAnchor="middle">{xLabel}</text>
         <text transform={`translate(12 ${H/2}) rotate(-90)`} textAnchor="middle">{yLabel}</text>
       </g>
 
       {/* Legend */}
-      <g transform={`translate(${W - 220}, ${padTop + 8})`} fontSize={10} fill="#c8d3e6">
-        <rect x={0} y={0} width={210} height={44} fill="#0b1020" stroke="#1f2940" rx={6} />
+      <g transform={`translate(${W - 220}, ${padTop + 8})`} fontSize={10} fill="#334155">
+        <rect x={0} y={0} width={210} height={44} fill="#FFFFFF" stroke="#E5E7EB" rx={6} />
         <g transform="translate(8,6)">
-          <rect width={14} height={6} y={2} fill="#7aa2f733" />
+          <rect width={14} height={6} y={2} fill="#4F7BFF22" />
           <text x={20} y={8}>P10–P90</text>
-          <rect width={14} height={6} y={18} fill="#7aa2f755" />
+          <rect width={14} height={6} y={18} fill="#4F7BFF44" />
           <text x={20} y={24}>P25–P75</text>
-          <line x1={2} x2={16} y1={34} y2={34} stroke="#7aa2f7" strokeWidth={2} />
+          <line x1={2} x2={16} y1={34} y2={34} stroke="#4F7BFF" strokeWidth={2} />
           <text x={20} y={36}>Median</text>
         </g>
       </g>
@@ -159,15 +159,15 @@ export const FanChart: React.FC<FanChartProps> = ({ p10, p25, p50, p75, p90, wid
       {/* Tooltip */}
       {hover && (
         <g>
-          <line x1={hover.x} x2={hover.x} y1={padTop} y2={H - padBottom} stroke="#7aa2f7" strokeDasharray="4 3" opacity={0.6} />
-          <circle cx={hover.x} cy={hover.y} r={3} fill="#7aa2f7" />
+          <line x1={hover.x} x2={hover.x} y1={padTop} y2={H - padBottom} stroke="#4F7BFF" strokeDasharray="4 3" opacity={0.6} />
+          <circle cx={hover.x} cy={hover.y} r={3} fill="#4F7BFF" />
           <g transform={`translate(${Math.min(W - 180, hover.x + 8)}, ${Math.max(padTop + 8, hover.y - 10)})`}>
-            <rect width={160} height={64} fill="#0b1020" stroke="#1f2940" rx={6} />
-            <text x={8} y={14} fill="#c8d3e6" fontSize={11}>
+            <rect width={160} height={64} fill="#FFFFFF" stroke="#E5E7EB" rx={6} />
+            <text x={8} y={14} fill="#334155" fontSize={11}>
               {startYear != null ? `${startYear + Math.floor(hover.i/12)} (m${(hover.i%12)+1})` : `Month ${hover.i} (${Math.round(hover.i/12)}y)`}
             </text>
-            <text x={8} y={30} fill="#9aa4b2" fontSize={11}>Median: {formatCurrency(p50[hover.i])}</text>
-            <text x={8} y={46} fill="#9aa4b2" fontSize={11}>P25/P75: {formatCurrency(p25[hover.i])} / {formatCurrency(p75[hover.i])}</text>
+            <text x={8} y={30} fill="#475569" fontSize={11}>Median: {formatCurrency(p50[hover.i])}</text>
+            <text x={8} y={46} fill="#475569" fontSize={11}>P25/P75: {formatCurrency(p25[hover.i])} / {formatCurrency(p75[hover.i])}</text>
           </g>
         </g>
       )}

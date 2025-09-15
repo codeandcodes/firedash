@@ -150,9 +150,9 @@ export const YearlyFlowsChart: React.FC<{
            setHoverI(Math.round(t * (n - 1)))
          }}
          onMouseLeave={() => setHoverI(null)}>
-      <rect x={0} y={0} width={W} height={H} fill="#101626" rx={8} />
+      <rect x={0} y={0} width={W} height={H} fill="#FFFFFF" rx={8} />
       {/* grid */}
-      <g stroke="#1f2940" strokeWidth={1} opacity={0.85}>
+      <g stroke="#E5E7EB" strokeWidth={1} opacity={1}>
         {Array.from({ length: 5 }).map((_, i) => {
           const t = i / 4
           const v = yMin + t * (yMax - yMin)
@@ -160,7 +160,7 @@ export const YearlyFlowsChart: React.FC<{
         })}
         {data.years.map((_, i) => (<line key={i} y1={padTop} y2={H - padBottom} x1={xCenter(i)} x2={xCenter(i)} opacity={0.3} />))}
       </g>
-      <g stroke="#c8d3e6" strokeWidth={1.25}>
+      <g stroke="#94A3B8" strokeWidth={1.25}>
         <line x1={padLeft} y1={padTop} x2={padLeft} y2={H - padBottom} />
         <line x1={padLeft} y1={H - padBottom} x2={W - padRight} y2={H - padBottom} />
       </g>
@@ -176,9 +176,9 @@ export const YearlyFlowsChart: React.FC<{
           const expH = y(-expVal) - y(0)
           return (
             <g key={i}>
-              {incH > 0 && <rect x={xl} y={y(incTop)} width={barW} height={incH} fill="#4caf50" opacity={0.9} />}
-              {retH > 0 && <rect x={xl} y={y(retTop)} width={barW} height={retH} fill="#a6da95" opacity={0.9} />}
-              {expH > 0 && <rect x={xl} y={y(0)} width={barW} height={expH} fill="#f28fad" opacity={0.9} />}
+              {incH > 0 && <rect x={xl} y={y(incTop)} width={barW} height={incH} fill="#22C55E" opacity={0.9} />}
+              {retH > 0 && <rect x={xl} y={y(retTop)} width={barW} height={retH} fill="#86EFAC" opacity={0.9} />}
+              {expH > 0 && <rect x={xl} y={y(0)} width={barW} height={expH} fill="#FCA5A5" opacity={0.9} />}
             </g>
           )
         })}
@@ -191,14 +191,14 @@ export const YearlyFlowsChart: React.FC<{
           const xc = xCenter(idx)
           return (
             <g>
-              <line x1={xc} x2={xc} y1={padTop} y2={H - padBottom} stroke="#f5a97f" strokeDasharray="6 3" />
-              <text x={xc + 6} y={padTop + 12} fill="#f5a97f" fontSize={10}>Retirement</text>
+              <line x1={xc} x2={xc} y1={padTop} y2={H - padBottom} stroke="#F59E0B" strokeDasharray="6 3" />
+              <text x={xc + 6} y={padTop + 12} fill="#F59E0B" fontSize={10}>Retirement</text>
             </g>
           )
         })()
       )}
       {/* labels */}
-      <g fill="#9aa4b2" fontSize={10}>
+      <g fill="#6B7280" fontSize={10}>
         {(() => {
           const ticks: number[] = []
           for (let v = 0; v <= posMax; v += posStep) ticks.push(v)
@@ -212,29 +212,29 @@ export const YearlyFlowsChart: React.FC<{
           const step = Math.max(1, Math.ceil(n / Math.max(1, maxLabels)))
           return data.years.map((yv, i) => (i % step === 0 ? <text key={i} x={xCenter(i)} y={H - 6} textAnchor="middle">{String(yv)}</text> : null))
         })()}
-        <text x={W/2} y={14} textAnchor="middle" fill="#c8d3e6">{title}</text>
+        <text x={W/2} y={14} textAnchor="middle" fill="#334155">{title}</text>
       </g>
       {/* legend */}
-      <g transform={`translate(${W - 240}, ${padTop + 8})`} fontSize={10} fill="#c8d3e6">
-        <rect x={0} y={0} width={230} height={64} fill="#0b1020" stroke="#1f2940" rx={6} />
+      <g transform={`translate(${W - 240}, ${padTop + 8})`} fontSize={10} fill="#334155">
+        <rect x={0} y={0} width={230} height={64} fill="#FFFFFF" stroke="#E5E7EB" rx={6} />
         <g transform="translate(8,6)">
-          <g transform="translate(0,0)"><rect width={12} height={8} y={2} fill="#a6da95" opacity={0.7} /><text x={18} y={9}
+          <g transform="translate(0,0)"><rect width={12} height={8} y={2} fill="#86EFAC" opacity={0.8} /><text x={18} y={9}
           >Returns</text></g>
-          <g transform="translate(0,16)"><rect width={12} height={8} y={2} fill="#4caf50" opacity={0.7} /><text x={18} y={9}
+          <g transform="translate(0,16)"><rect width={12} height={8} y={2} fill="#22C55E" opacity={0.8} /><text x={18} y={9}
           >Income</text></g>
-          <g transform="translate(0,32)"><rect width={12} height={8} y={2} fill="#f28fad" opacity={0.7} /><text x={18} y={9}
+          <g transform="translate(0,32)"><rect width={12} height={8} y={2} fill="#FCA5A5" opacity={0.8} /><text x={18} y={9}
           >Expenditures</text></g>
         </g>
       </g>
       {hoverI != null && (
         <g>
-          <line x1={xCenter(hoverI)} x2={xCenter(hoverI)} y1={padTop} y2={H - padBottom} stroke="#c8d3e6" strokeDasharray="4 3" opacity={0.6} />
+          <line x1={xCenter(hoverI)} x2={xCenter(hoverI)} y1={padTop} y2={H - padBottom} stroke="#4F7BFF" strokeDasharray="4 3" opacity={0.6} />
           <g transform={`translate(${Math.min(W - 220, xCenter(hoverI) + 8)}, ${padTop + 8})`}>
-            <rect width={200} height={84} fill="#0b1020" stroke="#1f2940" rx={6} />
-            <text x={8} y={14} fill="#c8d3e6" fontSize={11}>{data.years[hoverI]}</text>
-            <text x={8} y={30} fill="#a6da95" fontSize={11}>Returns: {fmtShort(data.ret[hoverI])}</text>
-            <text x={8} y={46} fill="#4caf50" fontSize={11}>Income: {fmtShort(data.inc[hoverI])}</text>
-            <text x={8} y={62} fill="#f28fad" fontSize={11}>Expenditures: {fmtShort(data.exp[hoverI])}</text>
+            <rect width={200} height={84} fill="#FFFFFF" stroke="#E5E7EB" rx={6} />
+            <text x={8} y={14} fill="#334155" fontSize={11}>{data.years[hoverI]}</text>
+            <text x={8} y={30} fill="#166534" fontSize={11}>Returns: {fmtShort(data.ret[hoverI])}</text>
+            <text x={8} y={46} fill="#15803D" fontSize={11}>Income: {fmtShort(data.inc[hoverI])}</text>
+            <text x={8} y={62} fill="#991B1B" fontSize={11}>Expenditures: {fmtShort(data.exp[hoverI])}</text>
           </g>
         </g>
       )}

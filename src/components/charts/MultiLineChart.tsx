@@ -89,36 +89,36 @@ export const MultiLineChart: React.FC<{
            setHoverI(Math.round(t * (months - 1)))
          }}
          onMouseLeave={() => setHoverI(null)}>
-      <rect x={0} y={0} width={W} height={H} fill="#101626" rx={8} />
-      <g stroke="#1f2940" strokeWidth={1} opacity={0.9}>
+      <rect x={0} y={0} width={W} height={H} fill="#FFFFFF" rx={8} />
+      <g stroke="#E5E7EB" strokeWidth={1} opacity={1}>
         {yTicks.map((t, idx) => (<line key={idx} x1={padLeft} x2={W - padRight} y1={y(t.v)} y2={y(t.v)} />))}
         {xTicks.map((t, idx) => (<line key={idx} y1={padTop} y2={H - padBottom} x1={x(t.i)} x2={x(t.i)} />))}
         {minorYTicks.map((t, idx) => (<line key={`my${idx}`} x1={padLeft} x2={W - padRight} y1={y(t.v)} y2={y(t.v)} opacity={0.4} />))}
         {minorXTicks.map((t, idx) => (<line key={`mx${idx}`} y1={padTop} y2={H - padBottom} x1={x(t.i)} x2={x(t.i)} opacity={0.4} />))}
       </g>
       {/* Axes */}
-      <g stroke="#c8d3e6" strokeWidth={1.25}>
+      <g stroke="#94A3B8" strokeWidth={1.25}>
         <line x1={padLeft} y1={padTop} x2={padLeft} y2={H - padBottom} />
         <line x1={padLeft} y1={H - padBottom} x2={W - padRight} y2={H - padBottom} />
       </g>
       {/* Axis labels */}
-      <g fill="#9aa4b2" fontSize={11}>
+      <g fill="#6B7280" fontSize={11}>
         <text x={W/2} y={H - 2} textAnchor="middle">{xLabel}</text>
         <text transform={`translate(12 ${H/2}) rotate(-90)`} textAnchor="middle">{yLabel}</text>
       </g>
       {keys.map((k) => (
         <path key={k} d={pathOf(seriesByKey[k])} fill="none" stroke={colors[k]} strokeWidth={2} />
       ))}
-      <g fill="#9aa4b2" fontSize="10">
+      <g fill="#6B7280" fontSize="10">
         {xTicks.map((t, idx) => (<text key={idx} x={x(t.i)} y={H - 6} textAnchor="middle">{t.label}</text>))}
         {minorXTicks.map((t, idx) => (<text key={`mxl${idx}`} x={x(t.i)} y={H - 6} textAnchor="middle" opacity={0.6} fontSize={9}>{t.label}</text>))}
         {yTicks.map((t, idx) => (<text key={idx} x={padLeft - 6} y={y(t.v) + 3} textAnchor="end">{t.label}</text>))}
         {minorYTicks.map((t, idx) => (<text key={`myl${idx}`} x={padLeft - 6} y={y(t.v) + 3} textAnchor="end" opacity={0.6} fontSize={9}>{t.label}</text>))}
-        <text x={W / 2} y={14} textAnchor="middle" fill="#c8d3e6">{title || 'Performance by Asset'}</text>
+        <text x={W / 2} y={14} textAnchor="middle" fill="#334155">{title || 'Performance by Asset'}</text>
       </g>
       {/* Legend */}
-      <g transform={`translate(${W - 220}, ${padTop + 8})`} fontSize={10} fill="#c8d3e6">
-        <rect x={0} y={0} width={210} height={keys.length*16 + 16} fill="#0b1020" stroke="#1f2940" rx={6} />
+      <g transform={`translate(${W - 220}, ${padTop + 8})`} fontSize={10} fill="#334155">
+        <rect x={0} y={0} width={210} height={keys.length*16 + 16} fill="#FFFFFF" stroke="#E5E7EB" rx={6} />
         <g transform="translate(8,6)">
           {keys.map((k, i) => (
             <g key={k} transform={`translate(0, ${i*16})`}>
@@ -130,10 +130,10 @@ export const MultiLineChart: React.FC<{
       </g>
       {hover && (
         <g>
-          <line x1={hover.x} x2={hover.x} y1={padTop} y2={H - padBottom} stroke="#c8d3e6" strokeDasharray="4 3" opacity={0.6} />
+          <line x1={hover.x} x2={hover.x} y1={padTop} y2={H - padBottom} stroke="#4F7BFF" strokeDasharray="4 3" opacity={0.6} />
           <g transform={`translate(${Math.min(W - 220, hover.x + 8)}, ${padTop + 8})`}>
-            <rect width={200} height={keys.length*16 + 24} fill="#0b1020" stroke="#1f2940" rx={6} />
-            <text x={8} y={14} fill="#c8d3e6" fontSize={11}>Month {hover.i} ({Math.round(hover.i/12)}y)</text>
+            <rect width={200} height={keys.length*16 + 24} fill="#FFFFFF" stroke="#E5E7EB" rx={6} />
+            <text x={8} y={14} fill="#334155" fontSize={11}>Month {hover.i} ({Math.round(hover.i/12)}y)</text>
             {keys.map((k, i) => {
               const v = hover.vals[k]
               const txt = typeof v === 'number' && isFinite(v) ? v.toFixed(2) : '-'

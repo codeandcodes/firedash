@@ -65,18 +65,18 @@ export const StackedPrincipal: React.FC<{
            setHoverI(Math.round(t * (months - 1)))
          }}
          onMouseLeave={() => setHoverI(null)}>
-      <rect x={0} y={0} width={W} height={H} fill="#101626" rx={8} />
-      <g stroke="#1f2940" strokeWidth={1} opacity={0.9}>
+      <rect x={0} y={0} width={W} height={H} fill="#FFFFFF" rx={8} />
+      <g stroke="#E5E7EB" strokeWidth={1} opacity={1}>
         {[0,0.25,0.5,0.75,1].map((t, idx) => (<line key={idx} x1={padLeft} x2={W - padRight} y1={y(t*maxY)} y2={y(t*maxY)} />))}
         {xTicks.map((t, idx) => (<line key={idx} y1={padTop} y2={H - padBottom} x1={x(t.i)} x2={x(t.i)} />))}
       </g>
       {/* Axes */}
-      <g stroke="#c8d3e6" strokeWidth={1.25}>
+      <g stroke="#94A3B8" strokeWidth={1.25}>
         <line x1={padLeft} y1={padTop} x2={padLeft} y2={H - padBottom} />
         <line x1={padLeft} y1={H - padBottom} x2={W - padRight} y2={H - padBottom} />
       </g>
       {/* Axis labels */}
-      <g fill="#9aa4b2" fontSize={11}>
+      <g fill="#6B7280" fontSize={11}>
         <text x={W/2} y={H - 2} textAnchor="middle">{xLabel}</text>
         <text transform={`translate(12 ${H/2}) rotate(-90)`} textAnchor="middle">{yLabel}</text>
       </g>
@@ -86,40 +86,40 @@ export const StackedPrincipal: React.FC<{
       {/* Retirement marker */}
       {typeof retAt === 'number' && retAt >= 0 && (
         <g>
-          <line x1={x(Math.min(months-1, retAt))} x2={x(Math.min(months-1, retAt))} y1={padTop} y2={H - padBottom} stroke="#f5a97f" strokeDasharray="6 3" />
-          <text x={x(Math.min(months-1, retAt)) + 6} y={padTop + 12} fill="#f5a97f" fontSize={10}>Retirement</text>
+          <line x1={x(Math.min(months-1, retAt))} x2={x(Math.min(months-1, retAt))} y1={padTop} y2={H - padBottom} stroke="#F59E0B" strokeDasharray="6 3" />
+          <text x={x(Math.min(months-1, retAt)) + 6} y={padTop + 12} fill="#F59E0B" fontSize={10}>Retirement</text>
         </g>
       )}
       {/* Labels */}
-      <g fill="#9aa4b2" fontSize={10}>
+      <g fill="#6B7280" fontSize={10}>
         {xTicks.map((t, idx) => (<text key={idx} x={x(t.i)} y={H - 6} textAnchor="middle">{t.label}</text>))}
-        <text x={W / 2} y={14} textAnchor="middle" fill="#c8d3e6">{title || 'Balance and Principal'}</text>
+        <text x={W / 2} y={14} textAnchor="middle" fill="#334155">{title || 'Balance and Principal'}</text>
       </g>
       {/* Hover */}
       {hover && (
         <g>
-          <line x1={hover.x} x2={hover.x} y1={padTop} y2={H - padBottom} stroke="#c8d3e6" strokeDasharray="4 3" opacity={0.6} />
+          <line x1={hover.x} x2={hover.x} y1={padTop} y2={H - padBottom} stroke="#4F7BFF" strokeDasharray="4 3" opacity={0.6} />
           <g transform={`translate(${Math.min(W - 220, hover.x + 8)}, ${padTop + 8})`}>
-            <rect width={200} height={72} fill="#0b1020" stroke="#1f2940" rx={6} />
-            <text x={8} y={16} fill="#c8d3e6" fontSize={11}>
+            <rect width={200} height={72} fill="#FFFFFF" stroke="#E5E7EB" rx={6} />
+            <text x={8} y={16} fill="#334155" fontSize={11}>
               {startYear != null ? `${startYear + Math.floor(hover.i/12)} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][hover.i%12]}` : `Month ${hover.i}`}
             </text>
-            <text x={8} y={32} fill="#7aa2f7" fontSize={11}>Total: ${Math.round(hover.total).toLocaleString()}</text>
-            <text x={8} y={48} fill="#eed49f" fontSize={11}>Principal: ${Math.round(hover.principal).toLocaleString()}</text>
-            <text x={8} y={64} fill="#9aa4b2" fontSize={11}>Above Prin.: ${Math.round(hover.above).toLocaleString()}</text>
+            <text x={8} y={32} fill="#4F7BFF" fontSize={11}>Total: ${Math.round(hover.total).toLocaleString()}</text>
+            <text x={8} y={48} fill="#EAB308" fontSize={11}>Principal: ${Math.round(hover.principal).toLocaleString()}</text>
+            <text x={8} y={64} fill="#475569" fontSize={11}>Above Prin.: ${Math.round(hover.above).toLocaleString()}</text>
           </g>
         </g>
       )}
       {/* Legend */}
-      <g transform={`translate(${W - 220}, ${padTop + 8})`} fontSize={10} fill="#c8d3e6">
-        <rect x={0} y={0} width={210} height={16*2 + 16} fill="#0b1020" stroke="#1f2940" rx={6} />
+      <g transform={`translate(${W - 220}, ${padTop + 8})`} fontSize={10} fill="#334155">
+        <rect x={0} y={0} width={210} height={16*2 + 16} fill="#FFFFFF" stroke="#E5E7EB" rx={6} />
         <g transform="translate(8,6)">
           <g transform="translate(0, 0)">
-            <rect width={12} height={8} y={2} fill="#eed49f" />
+            <rect width={12} height={8} y={2} fill="#EAB308" />
             <text x={18} y={9}>Principal Remaining</text>
           </g>
           <g transform="translate(0, 16)">
-            <rect width={12} height={8} y={2} fill="#7aa2f7" />
+            <rect width={12} height={8} y={2} fill="#4F7BFF" />
             <text x={18} y={9}>Above Principal</text>
           </g>
         </g>
