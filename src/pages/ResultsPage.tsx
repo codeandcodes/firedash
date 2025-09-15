@@ -6,7 +6,6 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useApp } from '@state/AppContext'
-import { runDeterministicBacktest } from '@engine/backtest'
 import { ScenarioOptions } from '@components/ScenarioOptions'
 import { FanChart } from '@components/charts/FanChart'
 // Removed deterministic-only charts to reduce clutter
@@ -230,16 +229,22 @@ export function ResultsPage() {
     poolRefs.current.forEach(w => w.terminate()); poolRefs.current = []
   }, [])
 
-  const det = useMemo(() => (snapshot ? runDeterministicBacktest(snapshot, {
-    years: simOptions.years,
-    inflation: simOptions.inflation,
-    rebalFreq: simOptions.rebalFreq
-  }) : null), [snapshot, simOptions])
   const mcText = useMemo(() => {
-    if (!snapshot || !mcSummary) return '-'
+    if (!snapshot) return '-'
     const paths = simOptions.paths
-    return `${paths.toLocaleString()} paths • success ${(mcSummary.successProbability * 100).toFixed(0)}% • median $${Math.round(mcSummary.medianTerminal).toLocaleString()}`
-  }, [mcSummary, snapshot, simOptions.paths])
+    // Determine the currently selected percentile final balance
+    let finalBal: number | null = null
+    if (series?.mc) {
+      const arr = quantile === 'p10' ? series.mc.p10 : quantile === 'p25' ? series.mc.p25 : quantile === 'p75' ? series.mc.p75 : quantile === 'p90' ? series.mc.p90 : series.mc.p50
+      if (arr && arr.length) finalBal = arr[arr.length - 1]
+    } else if (yearEnds) {
+      const arr = quantile === 'p10' ? yearEnds.p10 : quantile === 'p25' ? yearEnds.p25 : quantile === 'p75' ? yearEnds.p75 : quantile === 'p90' ? yearEnds.p90 : yearEnds.p50
+      if (arr && arr.length) finalBal = arr[arr.length - 1]
+    }
+    const qLabel = quantile.toUpperCase()
+    const base = `${paths.toLocaleString()} paths • ${mcSummary ? `success ${(mcSummary.successProbability * 100).toFixed(0)}%` : 'running…'}`
+    return `${base} • ${qLabel} final $${finalBal != null ? Math.round(finalBal).toLocaleString() : '—'}`
+  }, [mcSummary, snapshot, simOptions.paths, series, yearEnds, quantile])
   const startYear = useMemo(() => snapshot ? new Date(snapshot.timestamp).getFullYear() : undefined, [snapshot])
   const retAt = useMemo(() => {
     if (!snapshot) return undefined
@@ -275,10 +280,6 @@ export function ResultsPage() {
         </Box>
         <div className="cards">
           <div className="card">
-            <div className="card-title">Deterministic</div>
-            <div className="card-metric">{det ? `${det.summary}. Terminal $${det.terminal.toLocaleString()}` : '-'}</div>
-          </div>
-          <div className="card">
             <div className="card-title">Monte Carlo</div>
             <div className="card-metric">{loading ? `Computing… ${progress ? Math.round((progress.done/progress.total)*100) : 0}% (${progress?.done||0}/${progress?.total||0})` : mcText}</div>
             {loading && progress && (
@@ -291,7 +292,7 @@ export function ResultsPage() {
         {series && !loading && (
           <>
             <h2>Portfolio Balance — Fan Chart</h2>
-            <FanChart p10={series.mc.p10} p25={series.mc.p25} p50={series.mc.p50} p75={series.mc.p75} p90={series.mc.p90} years={simOptions.years} startYear={startYear} retAt={retAt} title="Monte Carlo Percentiles" width={1000} />
+            <FanChart p10={series.mc.p10} p25={series.mc.p25} p50={series.mc.p50} p75={series.mc.p75} p90={series.mc.p90} years={simOptions.years} startYear={startYear} retAt={retAt} title="Monte Carlo Percentiles" width={1000} highlight={quantile} />
             {/* Percentile selector moved to top */}
             <h2>Yearly Flows — Returns, Income, Expenditures</h2>
             {yearEnds && (

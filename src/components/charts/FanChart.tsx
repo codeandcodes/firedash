@@ -25,9 +25,10 @@ export interface FanChartProps {
   retAt?: number
   xLabel?: string
   yLabel?: string
+  highlight?: 'p10'|'p25'|'p50'|'p75'|'p90'
 }
 
-export const FanChart: React.FC<FanChartProps> = ({ p10, p25, p50, p75, p90, width = 800, height = 300, years, title, startYear, retAt, xLabel = 'Year', yLabel = 'Balance ($)' }) => {
+export const FanChart: React.FC<FanChartProps> = ({ p10, p25, p50, p75, p90, width = 800, height = 300, years, title, startYear, retAt, xLabel = 'Year', yLabel = 'Balance ($)', highlight = 'p50' }) => {
   const months = p50.length
   const maxY = Math.max(...p90)
   const padLeft = 48
@@ -118,7 +119,15 @@ export const FanChart: React.FC<FanChartProps> = ({ p10, p25, p50, p75, p90, wid
       <g>
         <path d={areaPath(p90, p10)} fill="#4F7BFF22" stroke="none" />
         <path d={areaPath(p75, p25)} fill="#4F7BFF44" stroke="none" />
-        <path d={linePath(p50)} fill="none" stroke="#4F7BFF" strokeWidth={2} />
+        {/* Base median line (subtle) */}
+        <path d={linePath(p50)} fill="none" stroke="#93C5FD" strokeWidth={1.5} />
+        {/* Highlight selected percentile */}
+        {(() => {
+          const series = highlight === 'p10' ? p10 : highlight === 'p25' ? p25 : highlight === 'p75' ? p75 : highlight === 'p90' ? p90 : p50
+          const color = '#2563EB'
+          const widthHL = 3
+          return <path d={linePath(series)} fill="none" stroke={color} strokeWidth={widthHL} />
+        })()}
       </g>
 
       {/* Retirement marker */}
