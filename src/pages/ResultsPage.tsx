@@ -3,12 +3,13 @@ import { useApp } from '@state/AppContext'
 import { runDeterministicBacktest } from '@engine/backtest'
 import { ScenarioOptions } from '@components/ScenarioOptions'
 import { FanChart } from '@components/charts/FanChart'
-import { LineChart } from '@components/charts/LineChart'
-import { StackedArea } from '@components/charts/StackedArea'
+// Removed deterministic-only charts to reduce clutter
 import { YearlyBalanceSheet } from '@components/YearlyBalanceSheet'
+import { YearlyFlowsChart } from '@components/YearlyFlowsChart'
+import { YearlyMultiLineChart } from '@components/charts/YearlyMultiLineChart'
 import type { MonteSummary } from '@types/engine'
 import { P2Quantile } from '@engine/quantile'
-import { LinearProgress, Box } from '@mui/material'
+import { LinearProgress, Box, ToggleButton, ToggleButtonGroup, Button, Collapse } from '@mui/material'
 import { resultsKey, saveCache, loadCache } from '@state/cache'
 
 export function ResultsPage() {
@@ -19,6 +20,10 @@ export function ResultsPage() {
   const simWorkerRef = useRef<Worker | null>(null)
   const poolRefs = useRef<Worker[]>([])
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
+  const [quantile, setQuantile] = useState<'p10'|'p25'|'p50'|'p75'|'p90'>('p50')
+  const [yearEnds, setYearEnds] = useState<null | { p10: number[]; p25: number[]; p50: number[]; p75: number[]; p90: number[] }>(null)
+  const [aliveFrac, setAliveFrac] = useState<number[] | null>(null)
+  const [showAdvanced, setShowAdvanced] = useState(false)
 
   useEffect(() => {
     if (!simWorkerRef.current) {
@@ -67,10 +72,25 @@ export function ResultsPage() {
       bootstrapBlockMonths: simOptions.bootstrapBlockMonths,
       bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma
     })
-    const cached = loadCache<{ series: any; summary: MonteSummary }>(cacheKey)
+    const cached = loadCache<{ series: any; summary: MonteSummary; yearEnds?: { p10:number[]; p25:number[]; p50:number[]; p75:number[]; p90:number[] }; aliveFrac?: number[] }>(cacheKey)
     if (cached) {
       setSeries(cached.series)
       setMcSummary(cached.summary)
+      if (cached.yearEnds) setYearEnds(cached.yearEnds)
+      if (cached.aliveFrac) setAliveFrac(cached.aliveFrac)
+      // derive per-year ends from cached monthly series
+      try {
+        const monthsC = Math.max(1, simOptions.years * 12)
+        const endIdx = (y: number) => Math.min(monthsC - 1, (y + 1) * 12 - 1)
+        const yr = {
+          p10: Array.from({ length: simOptions.years }, (_, y) => cached.series.mc.p10[endIdx(y)]),
+          p25: Array.from({ length: simOptions.years }, (_, y) => cached.series.mc.p25[endIdx(y)]),
+          p50: Array.from({ length: simOptions.years }, (_, y) => cached.series.mc.p50[endIdx(y)]),
+          p75: Array.from({ length: simOptions.years }, (_, y) => cached.series.mc.p75[endIdx(y)]),
+          p90: Array.from({ length: simOptions.years }, (_, y) => cached.series.mc.p90[endIdx(y)])
+        }
+        if (!cached.yearEnds) setYearEnds(yr)
+      } catch {}
       setLoading(false)
       setProgress(null)
       return
@@ -95,6 +115,17 @@ export function ResultsPage() {
     let toLaunch = simOptions.paths
     const maxAllowed = Math.max(1, Math.min(simOptions.maxWorkers || (navigator.hardwareConcurrency || 4), 8))
     const cores = Math.max(1, Math.min(maxAllowed, toLaunch))
+    // Per-year quantiles and alive counts
+    const yearsN = simOptions.years
+    const endIdx = (y: number) => Math.min(months - 1, (y + 1) * 12 - 1)
+    const yp2 = {
+      p10: Array.from({ length: yearsN }, () => new P2Quantile(0.1)),
+      p25: Array.from({ length: yearsN }, () => new P2Quantile(0.25)),
+      p50: Array.from({ length: yearsN }, () => new P2Quantile(0.5)),
+      p75: Array.from({ length: yearsN }, () => new P2Quantile(0.75)),
+      p90: Array.from({ length: yearsN }, () => new P2Quantile(0.9))
+    }
+    const aliveCounts = new Array<number>(yearsN).fill(0)
     // terminate old pool
     poolRefs.current.forEach(w => w.terminate())
     poolRefs.current = []
@@ -118,6 +149,16 @@ export function ResultsPage() {
               ;(p2[2][m] as any).add(arr[m])
               ;(p2[3][m] as any).add(arr[m])
               ;(p2[4][m] as any).add(arr[m])
+            }
+            // per-year
+            for (let y = 0; y < yearsN; y++) {
+              const v = arr[endIdx(y)]
+              yp2.p10[y].add(v)
+              yp2.p25[y].add(v)
+              yp2.p50[y].add(v)
+              yp2.p75[y].add(v)
+              yp2.p90[y].add(v)
+              if (v > 0) aliveCounts[y] += 1
             }
           }
           for (const st of statsBatch) {
@@ -144,7 +185,24 @@ export function ResultsPage() {
             try { saveCache(cacheKey, { series: res, summary: { successProbability: received ? successes / received : 0, medianTerminal: termP2.get(), p10Terminal: (termP10 as any).get?.() ?? NaN, p90Terminal: (termP90 as any).get?.() ?? NaN } as any }) } catch {}
             return res
           })
+          // push per-year series and alive fraction
+          const curYearEnds = {
+            p10: Array.from({ length: yearsN }, (_, y) => yp2.p10[y].get()),
+            p25: Array.from({ length: yearsN }, (_, y) => yp2.p25[y].get()),
+            p50: Array.from({ length: yearsN }, (_, y) => yp2.p50[y].get()),
+            p75: Array.from({ length: yearsN }, (_, y) => yp2.p75[y].get()),
+            p90: Array.from({ length: yearsN }, (_, y) => yp2.p90[y].get()),
+          }
+          setYearEnds(curYearEnds)
+          const curAliveFrac = Array.from({ length: yearsN }, (_, y) => (received ? Math.max(0, Math.min(1, aliveCounts[y] / received)) : 0))
+          setAliveFrac(curAliveFrac)
           setMcSummary({ successProbability: received ? successes / received : 0, medianTerminal: termP2.get(), p10Terminal: (termP10 as any).get?.() ?? NaN, p90Terminal: (termP90 as any).get?.() ?? NaN } as any)
+          // update cache with yearEnds and aliveFrac as well
+          try {
+            const snap = snapshot
+            const res = loadCache<any>(cacheKey) || {}
+            saveCache(cacheKey, { ...res, series: res.series || series, summary: { successProbability: received ? successes / received : 0, medianTerminal: termP2.get(), p10Terminal: (termP10 as any).get?.() ?? NaN, p90Terminal: (termP90 as any).get?.() ?? NaN }, yearEnds: curYearEnds, aliveFrac: curAliveFrac })
+          } catch {}
         } else if (msg.type === 'done') {
           // reduce when all workers finished
           if (poolRefs.current.every((wr) => (wr as any).__done)) {
@@ -218,14 +276,57 @@ export function ResultsPage() {
           <>
             <h2>Portfolio Balance — Fan Chart</h2>
             <FanChart p10={series.mc.p10} p25={series.mc.p25} p50={series.mc.p50} p75={series.mc.p75} p90={series.mc.p90} years={simOptions.years} startYear={startYear} retAt={retAt} title="Monte Carlo Percentiles" />
-            <h2>Deterministic Balance</h2>
-            <LineChart series={series.det.total} years={simOptions.years} startYear={startYear} retAt={retAt} label="Deterministic Balance" />
-            <h2>Deterministic Asset Breakdown</h2>
-            <StackedArea byClass={series.det.byClass} years={simOptions.years} startYear={startYear} retAt={retAt} />
-            <YearlyBalanceSheet snapshot={snapshot} totals={series.det.total} years={simOptions.years} inflation={simOptions.inflation} startYear={startYear} />
+            <Box sx={{ mt: 2, mb: 1 }}>
+              <ToggleButtonGroup size="small" exclusive value={quantile} onChange={(_e, v) => v && setQuantile(v)}>
+                <ToggleButton value="p10">P10</ToggleButton>
+                <ToggleButton value="p25">P25</ToggleButton>
+                <ToggleButton value="p50">Median</ToggleButton>
+                <ToggleButton value="p75">P75</ToggleButton>
+                <ToggleButton value="p90">P90</ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
+            <h2>Yearly Flows — Returns, Income, Expenditures</h2>
+            {yearEnds && (
+              <YearlyFlowsChart
+                snapshot={snapshot}
+                yearEnds={quantile === 'p10' ? yearEnds.p10 : quantile === 'p25' ? yearEnds.p25 : quantile === 'p75' ? yearEnds.p75 : quantile === 'p90' ? yearEnds.p90 : yearEnds.p50}
+                years={simOptions.years}
+                inflation={simOptions.inflation}
+                startYear={startYear}
+              />
+            )}
+            {yearEnds && (
+              <YearlyBalanceSheet
+                snapshot={snapshot}
+                yearEnds={quantile === 'p10' ? yearEnds.p10 : quantile === 'p25' ? yearEnds.p25 : quantile === 'p75' ? yearEnds.p75 : quantile === 'p90' ? yearEnds.p90 : yearEnds.p50}
+                years={simOptions.years}
+                inflation={simOptions.inflation}
+                startYear={startYear}
+                aliveFrac={aliveFrac || undefined}
+              />
+            )}
           </>
         )}
         {loading && <p>Computing simulations…</p>}
+        {/* Advanced / debug section */}
+        <div style={{ marginTop: 16 }}>
+          <Button size="small" onClick={() => setShowAdvanced(v => !v)}>{showAdvanced ? 'Hide' : 'Show'} Advanced</Button>
+          <Collapse in={showAdvanced} unmountOnExit>
+            <Box sx={{ mt: 1 }}>
+              {aliveFrac && startYear != null && (
+                <YearlyMultiLineChart
+                  years={Array.from({ length: simOptions.years }, (_, i) => (startYear as number) + i)}
+                  seriesByKey={{ 'Alive %': aliveFrac }}
+                  title="Paths Remaining (fraction of paths with balance > 0)"
+                  yLabel="% Alive"
+                />
+              )}
+              <Box sx={{ color: 'text.secondary', fontSize: 12, mt: 1 }}>
+                Note: Paths Remaining reflects the sample distribution and is independent of the percentile toggle above.
+              </Box>
+            </Box>
+          </Collapse>
+        </div>
         </>
       )}
     </section>

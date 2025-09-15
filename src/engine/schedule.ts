@@ -3,6 +3,7 @@ import type { Snapshot } from '@types/schema'
 export interface CashFlow {
   monthIndex: number // 0-based from start
   amount: number // positive = inflow to portfolio, negative = outflow
+  kind?: 'contrib' | 'expense' | 'property'
 }
 
 export interface Timeline {
@@ -34,11 +35,11 @@ export function buildTimeline(snapshot: Snapshot, years: number): Timeline {
     const s = monthIndexFrom(start, c.start) ?? 0
     const e = monthIndexFrom(start, c.end) ?? totalMonths - 1
     if (c.frequency === 'once') {
-      if (s >= 0 && s < totalMonths) flows.push({ monthIndex: s, amount: c.amount })
+      if (s >= 0 && s < totalMonths) flows.push({ monthIndex: s, amount: c.amount, kind: 'contrib' })
     } else if (c.frequency === 'monthly') {
-      for (let m = Math.max(0, s); m <= e && m < totalMonths; m++) flows.push({ monthIndex: m, amount: c.amount })
+      for (let m = Math.max(0, s); m <= e && m < totalMonths; m++) flows.push({ monthIndex: m, amount: c.amount, kind: 'contrib' })
     } else if (c.frequency === 'annual') {
-      for (let m = Math.max(0, s); m <= e && m < totalMonths; m += 12) flows.push({ monthIndex: m, amount: c.amount })
+      for (let m = Math.max(0, s); m <= e && m < totalMonths; m += 12) flows.push({ monthIndex: m, amount: c.amount, kind: 'contrib' })
     }
   }
 
@@ -49,11 +50,11 @@ export function buildTimeline(snapshot: Snapshot, years: number): Timeline {
     const e = monthIndexFrom(start, ex.end) ?? totalMonths - 1
     const amt = -Math.abs(ex.amount)
     if (ex.frequency === 'once') {
-      if (s >= 0 && s < totalMonths) flows.push({ monthIndex: s, amount: amt })
+      if (s >= 0 && s < totalMonths) flows.push({ monthIndex: s, amount: amt, kind: 'expense' })
     } else if (ex.frequency === 'monthly') {
-      for (let m = Math.max(0, s); m <= e && m < totalMonths; m++) flows.push({ monthIndex: m, amount: amt })
+      for (let m = Math.max(0, s); m <= e && m < totalMonths; m++) flows.push({ monthIndex: m, amount: amt, kind: 'expense' })
     } else if (ex.frequency === 'annual') {
-      for (let m = Math.max(0, s); m <= e && m < totalMonths; m += 12) flows.push({ monthIndex: m, amount: amt })
+      for (let m = Math.max(0, s); m <= e && m < totalMonths; m += 12) flows.push({ monthIndex: m, amount: amt, kind: 'expense' })
     }
   }
 
@@ -96,7 +97,7 @@ export function buildTimeline(snapshot: Snapshot, years: number): Timeline {
       const carry = -(taxes/12 + ins/12 + maint/12)
       const mort = m < mortgageMonths ? -(pay) : 0
       const net = rMonthly + carry + mort
-      if (net !== 0) flows.push({ monthIndex: m, amount: net })
+      if (net !== 0) flows.push({ monthIndex: m, amount: net, kind: 'property' })
     }
   }
 

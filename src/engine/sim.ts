@@ -243,7 +243,8 @@ export function simulateDeterministicSeries(snapshot: Snapshot, options: SimOpti
   const principalRemaining = new Array<number>(timeline.months)
   let cumOut = 0
   for (let m = 0; m < timeline.months; m++) {
-    const spendNominal = spendMonthly * Math.exp(inflM * m)
+    const retired = timeline.retirementAt == null ? true : m >= (timeline.retirementAt as number)
+    const spendNominal = retired ? spendMonthly * Math.exp(inflM * m) : 0
     const ssNominal = (timeline.ssStartMonth != null && m >= (timeline.ssStartMonth as number)) ? ssMonthly * Math.exp(inflM * m) : 0
     const cf = cashflows.get(m) || 0
     const netOut = spendNominal - ssNominal - cf // positive = money leaving portfolio
@@ -368,9 +369,13 @@ export function simulatePathTotals(snapshot: Snapshot, options: SO = {}): { tota
     }
     let t = 0
     for (let i = 0; i < 8; i++) t += balances[i]
+    if (!isFinite(t) || t < 0) t = 0
     totals[m] = t
     minDrawdown = Math.min(minDrawdown, t)
-    if (t <= 0) return { totals, success: false, terminal: 0 }
+    if (t <= 0) {
+      for (let k = m + 1; k < months; k++) totals[k] = 0
+      return { totals, success: false, terminal: 0 }
+    }
   }
   return { totals, success: true, terminal: totals[months - 1] }
 }
