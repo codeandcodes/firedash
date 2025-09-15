@@ -4,11 +4,13 @@ Firedash is a private, web-based dashboard for planning Financial Independence /
 
 ## Highlights
 - Snapshot-based, no live account linking; all data local by default
-- Monarch JSON importer with robust grouping (brokerage, crypto, other)
+- Monarch JSON importer with robust grouping (brokerage, crypto, other) and Holding name support
 - Deterministic and Monte Carlo simulations (Bootstrap, Regime, GBM)
 - Historical block bootstrap using long-run asset-class returns; in-app Historical Data upload with IndexedDB persistence and yearly performance charts + sanity stats
-- Real estate modeling (appreciation, mortgage, rental net flows)
-- Interactive charts (fan chart, deterministic line, stacked by asset class); minor tick labels; currency axes abbreviated (K/M/B)
+- Real estate modeling with carrying costs and mortgage amortization; SS begins at claim age
+- Unified What‑Ifs (Sensitivity + Scenarios) with baseline vs variant and target success spend search
+- Results overhaul: per‑year quantiles (P10/P25/P50/P75/P90), Yearly Balance Sheet, Yearly Flows, Paths Remaining, CSV export
+- Interactive charts (fan chart, deterministic line, stacked by asset class, yearly flows); minor tick labels; currency axes abbreviated (K/M/B)
 - Material UI, dark/light theme, responsive UI
 
 ## Quick Start
@@ -70,10 +72,10 @@ person?: { current_age? }
 
 ## UI Guide
 - Upload: Drag & drop snapshot JSON; routes to Builder on success
-- Builder: Import Monarch JSON; edit General/Retirement; Accounts/Holdings; Real Estate (with “Estimate” helper), Contributions, Expenses, Social Security; inline validation/tooltips; Load/Download
+- Builder: Import Monarch JSON; edit General/Retirement; Accounts/Holdings (Ticker/Name); Real Estate (with “Estimate” helper), Contributions, Expenses, Social Security; inline validation/tooltips; Load/Download. Large holdings lists paginate and preview is lazy for speed.
 - Snapshot: KPI cards; global allocation pie; per‑account pies by ticker + holdings tables; rounded, right‑aligned values; clicking an account name jumps to its details
-- Results: Scenario Options (sliders/selects, MC mode); worker pool + progressive MC percentiles; charts (fan chart with axes/hover, deterministic line with axes/hover, stacked by asset with minor ticks); retirement marker; yearly percentile table; currency axes abbreviated
-- Scenarios: Configure success targets and paths per eval. Computes suggested monthly drawdowns for Optimistic/Realistic/Conservative targets using worker pool; shows stacked Balance vs Principal charts per scenario with retirement marker
+- Results: Scenario Options (sliders/selects, MC mode, percentile selector). Worker pool + progressive MC percentiles; per‑year aggregation (P10..P90). Yearly Balance Sheet with CSV export (+ Alive_Frac), Yearly Flows chart (returns/income vs expenditures, centered bars), retirement markers and row highlighting. Advanced section includes Paths Remaining.
+- What‑Ifs: Unified Sensitivity + Scenarios. Compare Baseline vs Variant (inflation, spend, retirement age) and run monthly drawdown search for success targets (Optimistic/Realistic/Conservative). Charts use deterministic series for clarity.
 - Historical: Upload/replace historical returns (IndexedDB); Yearly Returns chart with axes/hover; Sanity Stats table
 
 ## Commands
@@ -89,7 +91,7 @@ src/
   engine/         # alloc, schedule, sim, historical bootstrap
   importers/      # Monarch JSON importer
   components/     # Layout, charts, ScenarioOptions, FileUpload
-  pages/          # Upload, Builder, Snapshot, Results, etc.
+  pages/          # Upload, Builder, Snapshot, Results, What‑Ifs, etc.
   state/          # AppContext, ThemeContext
   types/          # schema + engine + historical types
   styles.css      # base styles (theme via MUI)
@@ -103,15 +105,22 @@ scripts/          # parse_histret.mjs
 - Historical data is static JSON and can be regenerated from provided spreadsheets.
 
 ## Roadmap / Next Steps
-- Monthly series from Home Prices and Gold sheets; merge with annual returns
-- Withdrawal policies (guardrails/VPW), tax‑lot sale modeling, correlation tuning
-- Scenario enhancements: guardrails drawdown logic; budget categories; taxes
-- Persist/cold‑start cache warming for common scenarios
+- Historical: Monthly series from Home Prices and Gold sheets; merge with annual returns
+- Withdrawals/taxes: Guardrails/VPW policies; tax‑lot sale modeling; correlation tuning; taxes
+- UI polish: Flows breakdown tooltips; minor style tightening and legend/format refinements
+- Performance: Persist/cold‑start cache warming for common scenarios
 
 ## Contributing
 - Keep changes focused and documented.
 - Use Conventional Commits (e.g., `feat:`, `fix:`, `docs:`).
-- See `docs/SESSION_SUMMARY.md` for a working-session recap and key module notes.
+- See `docs/SESSION_SUMMARY.md` or `docs/session_start.md` for a working-session recap and current state.
+
+## What’s New (Sep 2025)
+- Unified What‑Ifs page (routes `/what-ifs`, `/scenarios`, `/sensitivity`).
+- Results now include per‑year quantiles and Alive_Frac, Yearly Balance Sheet and Flows; CSV export; fixed NaN/zero collapse handling.
+- Real estate modeling includes mortgage amortization and carrying costs; Social Security starts at claim age.
+- Builder performance improvements and Holding Name field; Snapshot displays Ticker or Name fallback.
+- MultiLineChart tooltip no longer crashes on undefined values.
 
 ---
 Firedash is intended as a private planning tool; verify assumptions against your own data and risk preferences.

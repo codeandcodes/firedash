@@ -136,5 +136,5 @@ export function PortfolioSnapshotPage() {
 /*
 Portfolio Snapshot page.
 - Shows timestamp, KPI cards, global allocation pie, and per-account pies with holdings tables.
-- Values are rounded and right-aligned for readability.
+- Displays Ticker or Name fallback in holdings; values rounded and right-aligned for readability.
 */

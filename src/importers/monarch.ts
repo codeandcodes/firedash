@@ -167,4 +167,5 @@ Monarch investments importer (GraphQL aggregate holdings).
 - Groups positions by holding.account; institutionless → synthetic 'Other'.
 - Crypto under non-crypto → synthetic '(Crypto)' account to avoid mixing.
 - Price selection prefers fresher security.currentPrice over stale holding closingPrice.
+- Populates HoldingLot.name from holding/security when available.
 */

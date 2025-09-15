@@ -1,3 +1,6 @@
+/**
+ * Mortgage amortization helpers. Computes month-by-month principal/interest and payoff timing.
+ */
 export interface AmortMonth {
   month: number
   interest: number
@@ -32,4 +35,3 @@ export function amortizationSchedule(principal: number, annualRate: number, paym
   }
   return { months, paidOffAtMonth, negativeAmortization }
 }
-

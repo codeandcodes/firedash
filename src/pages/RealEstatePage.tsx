@@ -1,3 +1,7 @@
+/**
+ * Real Estate page
+ * - Lists properties and shows an amortization panel per property: payoff summary, sparkline, and yearly schedule.
+ */
 import { useApp } from '@state/AppContext'
 import { amortizationSchedule } from '@engine/mortgage'
 import { Card, CardContent, Collapse, IconButton } from '@mui/material'

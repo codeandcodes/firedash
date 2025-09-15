@@ -534,6 +534,8 @@ Key exports:
 - simulateDeterministic(): fixed real returns approximation.
 - simulateSeries(): deterministic by-class series and MC percentiles for charts.
 Implementation notes:
+- Timeline includes property-tagged cashflows and ssStartMonth (from claim_age).
 - zeroBalances() & dynamic byClass allocation prevent NaNs when adding assets.
+- Typed-array fast path (simulatePathTotals) used in workers for speed; clamps on depletion and fills remainder with 0.
 - Regime sampler models persistent downturns; Bootstrap sampler preserves historical sequences.
 */

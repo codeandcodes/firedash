@@ -1,3 +1,9 @@
+/**
+ * YearlyBalanceSheet
+ * - Computes per-year Start, Returns, Income, Expenditures, End using selected percentile year-end balances.
+ * - Avoids double-counting property flows by tagging and excluding from Extra.
+ * - Adds retirement badges/row highlighting and CSV export (includes Alive_Frac if provided).
+ */
 import React, { useMemo } from 'react'
 import type { Snapshot } from '@types/schema'
 import type { AssetClass } from '@types/engine'

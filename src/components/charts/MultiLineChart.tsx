@@ -148,5 +148,6 @@ export const MultiLineChart: React.FC<{
 
 /*
 MultiLineChart – Renders multiple series (e.g., per-asset cumulative index or returns).
-Expects series values on a consistent scale across keys.
+- Guards tooltip values (no toFixed on undefined/NaN).
+- Expects series values on a consistent scale across keys.
 */

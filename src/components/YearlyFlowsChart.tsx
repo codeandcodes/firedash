@@ -1,3 +1,8 @@
+/**
+ * YearlyFlowsChart
+ * - Visualizes per-year flows as stacked bars: Income + Returns above 0, Expenditures below 0.
+ * - Bars centered within bins; retirement marker line; hover tooltip shows breakdown.
+ */
 import React, { useMemo, useState } from 'react'
 import type { Snapshot } from '@types/schema'
 import { buildTimeline } from '@engine/schedule'

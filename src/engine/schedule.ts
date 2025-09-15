@@ -120,6 +120,6 @@ export function buildTimeline(snapshot: Snapshot, years: number): Timeline {
 /*
 Monthly cashflow schedule builder.
 - Aggregates contributions/expenses into month-indexed cashflows over N years.
-- Computes rental net monthly from real estate entries.
-- Derives retirementAt month from target_date or (target_age - current_age).
+- Adds property flows each month: rent net, recurring carrying costs, and mortgage payments until payoff (tagged kind: 'property').
+- Derives retirementAt month from target_date or (target_age - current_age) and ssStartMonth from earliest claim_age.
 */

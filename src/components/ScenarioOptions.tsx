@@ -128,6 +128,6 @@ export const ScenarioOptions: React.FC = () => {
 }
 /*
 Scenario Options panel.
-- Controls years, paths, rebalancing, inflation, and MC mode.
-- Bootstrap mode exposes Block (months) and Noise σ controls (currently wired via window for minimal plumbing).
+- Controls years, paths, rebalancing, inflation, percentile, and MC mode with helpful tooltips.
+- Bootstrap mode exposes Block (months) and Noise σ controls.
 */

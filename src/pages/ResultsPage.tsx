@@ -1,3 +1,9 @@
+/**
+ * Results page
+ * - Runs deterministic + Monte Carlo sims via workers; progressive P^2 percentile updates.
+ * - Aggregates per-year end balances (P10/P25/P50/P75/P90) and Alive_Frac (paths remaining).
+ * - Renders FanChart, Yearly Balance Sheet (with CSV export) and Yearly Flows chart; advanced Paths Remaining view.
+ */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useApp } from '@state/AppContext'
 import { runDeterministicBacktest } from '@engine/backtest'

@@ -1,3 +1,8 @@
+/**
+ * What‑Ifs page (unified Sensitivity + Scenarios)
+ * - Baseline vs Variant comparison (inflation, spend, retirement age).
+ * - Spend search for Optimistic/Realistic/Conservative targets with worker parallelism and caching.
+ */
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useApp } from '@state/AppContext'
 import type { Snapshot } from '@types/schema'
@@ -338,4 +343,3 @@ export function WhatIfsPage() {
     </section>
   )
 }
-

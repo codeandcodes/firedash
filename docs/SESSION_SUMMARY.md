@@ -1,4 +1,4 @@
-# Firedash – Working Session Summary (Sep 13–14, 2025)
+# Firedash – Working Session Summary (Sep 13–15, 2025)
 
 This document summarizes the major changes, architecture, and key functions so we can quickly pick up work next time without reading the full chat history.
 
@@ -15,7 +15,7 @@ This document summarizes the major changes, architecture, and key functions so w
   - Monte Carlo:
     - Regime sampler (bull/bear/stagnation) with persistent drawdowns.
     - Historical block bootstrap from data/historical_returns.json (annual Damodaran returns expanded to monthly, sampled in 12‑month blocks with noise for intra‑year dispersion).
-  - Monthly cashflow schedule (contributions/expenses, optional rental net flows), rebalancing, retirement timing, SS inflow.
+  - Monthly cashflow schedule (contributions/expenses + property flows with carrying costs and mortgage payments until payoff), rebalancing, retirement timing, SS inflow starting at claim age.
 - Charts: Fan chart (P10/P25/Median/P75/P90), deterministic line, stacked area by asset class; minor axis labels; currency axes abbreviated (K/M/B); hovers show calendar dates; retirement markers and table highlight.
 
 ## Data Ingestion
@@ -42,11 +42,11 @@ This document summarizes the major changes, architecture, and key functions so w
 
 ## UI / State
 - Material UI AppBar+Drawer; Theme toggle (AppThemeProvider).
-- ScenarioOptions: sliders for years/paths/inflation; Max Workers; Select for rebalancing; MC Mode (Bootstrap/Regime/GBM); block/noise controls for Bootstrap; debounced sliders.
-- BuilderPage: Monarch import; Accordions for General/Retirement; Accounts (Type label fixed), Real Estate (with estimate helper), Contributions, Expenses, Social Security; inline validation and tooltips.
+- ScenarioOptions: sliders for years/paths/inflation and percentile selector; Max Workers; Select for rebalancing; MC Mode (Bootstrap/Regime/GBM); block/noise controls for Bootstrap; debounced sliders and tooltips.
+- BuilderPage: Monarch import; Accordions for General/Retirement; Accounts (Ticker/Name inputs), Real Estate (with estimate helper), Contributions, Expenses, Social Security; pagination for large holdings; lazy preview; inline validation/tooltips.
 - Snapshot: KPI cards; global allocation pie; per-account pies and holdings; clicking account name jumps to its detail card.
-- Results: Monte Carlo worker pool with progressive updates using P^2 quantiles; progress bar and text; caching of results keyed by snapshot+options.
-- Scenarios: Inputs for success targets and paths per eval; parallelized spend search (one worker per target) with iteration updates; stacked Balance vs. Principal charts per scenario; caching by inputs.
+- Results: Monte Carlo worker pool with progressive updates using P^2 quantiles; per‑year end‑balance aggregation (P10/P25/P50/P75/P90) and Alive_Frac (paths remaining). Yearly Balance Sheet with CSV export and retirement badges; Yearly Flows chart with centered bars and retirement marker; fan chart width aligned to flows. Caching stores yearEnds and aliveFrac.
+- What‑Ifs: Unified Sensitivity + Scenarios under a single page; baseline vs variant comparison; drawdown search for Optimistic/Realistic/Conservative targets; charts use deterministic series; routes `/what-ifs`, `/scenarios`, `/sensitivity` all resolve here.
 
 ## Calibration Notes
 - Bootstrap defaults tuned for annual-expanded dataset:
@@ -55,18 +55,23 @@ This document summarizes the major changes, architecture, and key functions so w
 - Deterministic path uses fixed real returns; doubling ~14y (~5% real) is expected. Monte Carlo median should show better trend with Bootstrap.
 
 ## Key Files & Responsibilities
-- src/importers/monarch.ts – Robust importer and grouping, price freshness.
+- src/importers/monarch.ts – Robust importer and grouping; fresher price logic; sets HoldingLot.name.
 - src/engine/historical.ts – Bootstrap sampler & loader (bundled JSON import).
-- src/engine/sim.ts – Core monthly loop, deterministic/MC series, regime sampler.
+- src/engine/schedule.ts – Timeline with consolidated cashflows incl. property flows; retirement and SS start months.
+- src/engine/mortgage.ts – Amortization schedule helper and payoff detection.
+- src/engine/sim.ts – Core monthly loop, deterministic/MC series, regime sampler; depletion handling and typed‑array fast path.
 - src/engine/alloc.ts – Asset classification and weights; GOLD/CRYPTO added.
 - src/state/AppContext.tsx – Snapshot + simOptions (years, paths, rebalFreq, inflation, mcMode).
-- src/components/charts/* – FanChart/LineChart/StackedArea with tooltips, axes, legends, retirement markers.
+- src/components/charts/* – FanChart/LineChart/MultiLineChart/StackedArea; tooltips, axes, legends, retirement markers.
+- src/components/YearlyBalanceSheet.tsx – Per‑year breakdown, CSV export with Alive_Frac.
+- src/components/YearlyFlowsChart.tsx – Stacked flows (returns+income vs expenditures) per year.
+- src/pages/ResultsPage.tsx – Orchestrates workers; progressive updates; caching; per‑year quantiles and paths remaining.
+- src/pages/WhatIfsPage.tsx – Unified Sensitivity + Scenarios.
 
 ## Known TODOs / Next Steps
 - Historical parser: Parse monthly Home Prices and Gold Prices sheets for richer monthly dynamics; merge with Damodaran series.
 - Withdrawal policies (guardrails/VPW) and tax-lot sale logic.
-- Add worker-pool split per spend target (already one-per-target; consider parallelizing inside eval); show ETA and allow cancel.
-- Add Max Workers to Scenarios page.
+- Spend search: show ETA, allow cancel; consider deeper parallelization.
 - CSV parser for historical upload.
 
 ## How to Run / Re-generate Historical Data
@@ -75,5 +80,13 @@ This document summarizes the major changes, architecture, and key functions so w
 - Historical JSON: `node scripts/parse_histret.mjs` (reads histretSP.xls, outputs data/historical_returns.json).
 
 ## Notes
-- Caching: Results and Scenarios caches persist in localStorage (keyed by snapshot+options). Results updates cache progressively.
-- After upload, app navigates to Results and precomputes scenarios in background.
+- Caching: Results and What‑Ifs caches persist in localStorage (keyed by snapshot+options). Results updates cache progressively and stores per‑year series and Alive_Frac.
+- After upload, app navigates to Results and precomputes What‑Ifs scenarios as needed.
+
+## Session Updates (Sep 15, 2025)
+- Combined Sensitivity and Scenarios into What‑Ifs; routed aliases and updated nav.
+- Corrected Social Security start (claim age) and real estate cashflow modeling (mortgage payoff, carrying costs, no double-count in Extra).
+- Added Real Estate amortization panel (schedule/sparkline).
+- Overhauled Results with per‑year quantiles, Yearly Balance Sheet/Flows, Paths Remaining, CSV export; fixed NaN/zero collapse and depletion handling.
+- Builder optimizations (pagination, lazy preview) and Holding Name field; Snapshot shows Ticker or Name.
+- MultiLineChart tooltip guards undefined values.
