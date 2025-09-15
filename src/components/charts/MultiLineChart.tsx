@@ -134,9 +134,11 @@ export const MultiLineChart: React.FC<{
           <g transform={`translate(${Math.min(W - 220, hover.x + 8)}, ${padTop + 8})`}>
             <rect width={200} height={keys.length*16 + 24} fill="#0b1020" stroke="#1f2940" rx={6} />
             <text x={8} y={14} fill="#c8d3e6" fontSize={11}>Month {hover.i} ({Math.round(hover.i/12)}y)</text>
-            {keys.map((k, i) => (
-              <text key={k} x={8} y={28 + i*16} fill={colors[k]} fontSize={11}>{k}: {(hover.vals[k]).toFixed(2)}</text>
-            ))}
+            {keys.map((k, i) => {
+              const v = hover.vals[k]
+              const txt = typeof v === 'number' && isFinite(v) ? v.toFixed(2) : '-'
+              return <text key={k} x={8} y={28 + i*16} fill={colors[k]} fontSize={11}>{k}: {txt}</text>
+            })}
           </g>
         </g>
       )}

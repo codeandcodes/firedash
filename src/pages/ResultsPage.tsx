@@ -257,6 +257,16 @@ export function ResultsPage() {
       {snapshot && (
         <>
         <ScenarioOptions />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+          <span style={{ color: '#9aa4b2', fontSize: 12 }}>Percentile</span>
+          <ToggleButtonGroup size="small" exclusive value={quantile} onChange={(_e, v) => v && setQuantile(v)}>
+            <ToggleButton value="p10" title="10th percentile (conservative)">P10</ToggleButton>
+            <ToggleButton value="p25" title="25th percentile">P25</ToggleButton>
+            <ToggleButton value="p50" title="Median (50th percentile)">Median</ToggleButton>
+            <ToggleButton value="p75" title="75th percentile">P75</ToggleButton>
+            <ToggleButton value="p90" title="90th percentile (optimistic)">P90</ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
         <div className="cards">
           <div className="card">
             <div className="card-title">Deterministic</div>
@@ -275,16 +285,8 @@ export function ResultsPage() {
         {series && !loading && (
           <>
             <h2>Portfolio Balance — Fan Chart</h2>
-            <FanChart p10={series.mc.p10} p25={series.mc.p25} p50={series.mc.p50} p75={series.mc.p75} p90={series.mc.p90} years={simOptions.years} startYear={startYear} retAt={retAt} title="Monte Carlo Percentiles" />
-            <Box sx={{ mt: 2, mb: 1 }}>
-              <ToggleButtonGroup size="small" exclusive value={quantile} onChange={(_e, v) => v && setQuantile(v)}>
-                <ToggleButton value="p10">P10</ToggleButton>
-                <ToggleButton value="p25">P25</ToggleButton>
-                <ToggleButton value="p50">Median</ToggleButton>
-                <ToggleButton value="p75">P75</ToggleButton>
-                <ToggleButton value="p90">P90</ToggleButton>
-              </ToggleButtonGroup>
-            </Box>
+            <FanChart p10={series.mc.p10} p25={series.mc.p25} p50={series.mc.p50} p75={series.mc.p75} p90={series.mc.p90} years={simOptions.years} startYear={startYear} retAt={retAt} title="Monte Carlo Percentiles" width={1000} />
+            {/* Percentile selector moved to top */}
             <h2>Yearly Flows — Returns, Income, Expenditures</h2>
             {yearEnds && (
               <YearlyFlowsChart
@@ -293,6 +295,8 @@ export function ResultsPage() {
                 years={simOptions.years}
                 inflation={simOptions.inflation}
                 startYear={startYear}
+                retAt={retAt}
+                width={1000}
               />
             )}
             {yearEnds && (

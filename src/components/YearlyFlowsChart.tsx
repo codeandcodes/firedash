@@ -18,10 +18,11 @@ export const YearlyFlowsChart: React.FC<{
   years: number
   inflation: number
   startYear?: number
+  retAt?: number
   width?: number
   height?: number
   title?: string
-}> = ({ snapshot, yearEnds, years, inflation, startYear, width = 1000, height = 320, title = 'Returns, Income, Expenditures per Year' }) => {
+}> = ({ snapshot, yearEnds, years, inflation, startYear, retAt, width = 1000, height = 320, title = 'Returns, Income, Expenditures per Year' }) => {
   const months = years * 12
   const data = useMemo(() => {
     const safe = (n: number | undefined | null) => (typeof n === 'number' && isFinite(n) ? n : 0)
@@ -95,7 +96,12 @@ export const YearlyFlowsChart: React.FC<{
   const innerW = W - padLeft - padRight
   const innerH = H - padTop - padBottom
   const n = years
-  const x = (i: number) => padLeft + (n > 1 ? (i / (n - 1)) * innerW : innerW / 2)
+  // Bin-based bar positioning so bars don't hang off the y-axis
+  const binW = n > 0 ? innerW / n : innerW
+  const barGap = Math.min(12, binW * 0.15)
+  const barW = Math.max(4, binW - 2 * barGap)
+  const xLeft = (i: number) => padLeft + i * binW + (binW - barW) / 2
+  const xCenter = (i: number) => xLeft(i) + barW / 2
 
   // Scale: stack income + returns above 0, expenditures below 0
   const posCandidates = data.inc.map((v, i) => (isFinite(v) ? v : 0) + (isFinite(data.ret[i]) ? data.ret[i] : 0))
@@ -147,7 +153,7 @@ export const YearlyFlowsChart: React.FC<{
           const v = yMin + t * (yMax - yMin)
           return <line key={i} x1={padLeft} x2={W - padRight} y1={y(v)} y2={y(v)} />
         })}
-        {data.years.map((_, i) => (<line key={i} y1={padTop} y2={H - padBottom} x1={x(i)} x2={x(i)} opacity={0.3} />))}
+        {data.years.map((_, i) => (<line key={i} y1={padTop} y2={H - padBottom} x1={xCenter(i)} x2={xCenter(i)} opacity={0.3} />))}
       </g>
       <g stroke="#c8d3e6" strokeWidth={1.25}>
         <line x1={padLeft} y1={padTop} x2={padLeft} y2={H - padBottom} />
@@ -156,9 +162,7 @@ export const YearlyFlowsChart: React.FC<{
       {/* stacked bars */}
       <g>
         {data.years.map((_, i) => {
-          const barW = Math.max(4, innerW / Math.max(12, n * 1.5))
-          const xCenter = x(i)
-          const xLeft = xCenter - barW / 2
+          const xl = xLeft(i)
           const incTop = Math.max(0, pos1[i])
           const retTop = Math.max(0, pos2[i])
           const expVal = Math.max(0, neg[i])
@@ -167,13 +171,27 @@ export const YearlyFlowsChart: React.FC<{
           const expH = y(-expVal) - y(0)
           return (
             <g key={i}>
-              {incH > 0 && <rect x={xLeft} y={y(incTop)} width={barW} height={incH} fill="#4caf50" opacity={0.9} />}
-              {retH > 0 && <rect x={xLeft} y={y(retTop)} width={barW} height={retH} fill="#a6da95" opacity={0.9} />}
-              {expH > 0 && <rect x={xLeft} y={y(0)} width={barW} height={expH} fill="#f28fad" opacity={0.9} />}
+              {incH > 0 && <rect x={xl} y={y(incTop)} width={barW} height={incH} fill="#4caf50" opacity={0.9} />}
+              {retH > 0 && <rect x={xl} y={y(retTop)} width={barW} height={retH} fill="#a6da95" opacity={0.9} />}
+              {expH > 0 && <rect x={xl} y={y(0)} width={barW} height={expH} fill="#f28fad" opacity={0.9} />}
             </g>
           )
         })}
       </g>
+      {/* Retirement marker */}
+      {typeof retAt === 'number' && retAt >= 0 && (
+        (() => {
+          const rYear = Math.floor(retAt / 12)
+          const idx = Math.max(0, Math.min(n - 1, rYear))
+          const xc = xCenter(idx)
+          return (
+            <g>
+              <line x1={xc} x2={xc} y1={padTop} y2={H - padBottom} stroke="#f5a97f" strokeDasharray="6 3" />
+              <text x={xc + 6} y={padTop + 12} fill="#f5a97f" fontSize={10}>Retirement</text>
+            </g>
+          )
+        })()
+      )}
       {/* labels */}
       <g fill="#9aa4b2" fontSize={10}>
         {(() => {
@@ -187,7 +205,7 @@ export const YearlyFlowsChart: React.FC<{
         {(() => {
           const maxLabels = Math.min(12, Math.floor(innerW / 90))
           const step = Math.max(1, Math.ceil(n / Math.max(1, maxLabels)))
-          return data.years.map((yv, i) => (i % step === 0 ? <text key={i} x={x(i)} y={H - 6} textAnchor="middle">{String(yv)}</text> : null))
+          return data.years.map((yv, i) => (i % step === 0 ? <text key={i} x={xCenter(i)} y={H - 6} textAnchor="middle">{String(yv)}</text> : null))
         })()}
         <text x={W/2} y={14} textAnchor="middle" fill="#c8d3e6">{title}</text>
       </g>
@@ -205,8 +223,8 @@ export const YearlyFlowsChart: React.FC<{
       </g>
       {hoverI != null && (
         <g>
-          <line x1={x(hoverI)} x2={x(hoverI)} y1={padTop} y2={H - padBottom} stroke="#c8d3e6" strokeDasharray="4 3" opacity={0.6} />
-          <g transform={`translate(${Math.min(W - 220, x(hoverI) + 8)}, ${padTop + 8})`}>
+          <line x1={xCenter(hoverI)} x2={xCenter(hoverI)} y1={padTop} y2={H - padBottom} stroke="#c8d3e6" strokeDasharray="4 3" opacity={0.6} />
+          <g transform={`translate(${Math.min(W - 220, xCenter(hoverI) + 8)}, ${padTop + 8})`}>
             <rect width={200} height={84} fill="#0b1020" stroke="#1f2940" rx={6} />
             <text x={8} y={14} fill="#c8d3e6" fontSize={11}>{data.years[hoverI]}</text>
             <text x={8} y={30} fill="#a6da95" fontSize={11}>Returns: {fmtShort(data.ret[hoverI])}</text>

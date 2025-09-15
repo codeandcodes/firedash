@@ -89,7 +89,8 @@ export const YearlyBalanceSheet: React.FC<{
       const exp = (spend[y] || 0) + (perYear[y]?.mortgage || 0) + (perYear[y]?.reCarry || 0) + (extraExp[y] || 0)
       return safe(endBal[y]) - safe(startBal[y]) - (inc - exp)
     })
-    return { perYear, contrib, extraExp, ss, spend, returnsByYear, endBal, startBal, retTotals }
+    const retYearIdx = tl.retirementAt != null ? Math.floor((tl.retirementAt as number) / 12) : undefined
+    return { perYear, contrib, extraExp, ss, spend, returnsByYear, endBal, startBal, retTotals, retYearIdx }
   }, [snapshot, yearEnds, years, inflation])
 
   const fmt = (n: number) => `$${Math.round(n).toLocaleString()}`
@@ -160,23 +161,69 @@ export const YearlyBalanceSheet: React.FC<{
             const inc = data.contrib[y] + data.ss[y] + data.perYear[y].rentNet
             const exp = data.spend[y] + data.perYear[y].mortgage + data.perYear[y].reCarry + data.extraExp[y]
             const retTotal = data.retTotals[y]
+            const isRetStart = data.retYearIdx != null && y === data.retYearIdx
+            const isRetired = data.retYearIdx != null && y >= (data.retYearIdx as number)
             return (
-              <tr key={y}>
-                <td>{yearLabel}</td>
-                <td>{fmt(data.startBal[y])}</td>
-                <td>
+              <tr key={y} style={isRetired ? { background: isRetStart ? '#1b2238' : '#161d2f' } : undefined}>
+                <td style={{ verticalAlign: 'top' }}>
+                  <div>{yearLabel}</div>
+                  {isRetStart && (
+                    <div style={{ marginTop: 4 }}>
+                      <span style={{
+                        padding: '2px 6px',
+                        fontSize: 11,
+                        color: '#f5a97f',
+                        border: '1px solid #f5a97f',
+                        borderRadius: 10,
+                        whiteSpace: 'nowrap'
+                      }}>
+                        Retirement starts
+                      </span>
+                    </div>
+                  )}
+                  {!isRetStart && isRetired && (
+                    <div style={{ marginTop: 4 }}>
+                      <span style={{
+                        padding: '2px 6px',
+                        fontSize: 11,
+                        color: '#a6da95',
+                        border: '1px solid #a6da95',
+                        borderRadius: 10,
+                        whiteSpace: 'nowrap'
+                      }}>
+                        Retired
+                      </span>
+                    </div>
+                  )}
+                </td>
+                <td style={{ verticalAlign: 'top' }}>{fmt(data.startBal[y])}</td>
+                <td style={{ verticalAlign: 'top' }}>
                   <div style={{ color: '#a6da95' }}>{fmt(retTotal)}</div>
-                  <div style={{ color: '#a6da95', fontSize: 12 }}>{`US ${fmt(r.byClass.US_STOCK||0)} • Intl ${fmt(r.byClass.INTL_STOCK||0)} • Bonds ${fmt(r.byClass.BONDS||0)} • RE ${fmt(r.byClass.REAL_ESTATE||0)}`}</div>
+                  <div style={{ color: '#a6da95', fontSize: 12 }}>
+                    <div>US {fmt(r.byClass.US_STOCK||0)}</div>
+                    <div>Intl {fmt(r.byClass.INTL_STOCK||0)}</div>
+                    <div>Bonds {fmt(r.byClass.BONDS||0)}</div>
+                    <div>RE {fmt(r.byClass.REAL_ESTATE||0)}</div>
+                  </div>
                 </td>
-                <td>
+                <td style={{ verticalAlign: 'top' }}>
                   <div style={{ color: '#a6da95' }}>{fmt(inc)}</div>
-                  <div style={{ color: '#a6da95', fontSize: 12 }}>{`Contrib ${fmt(data.contrib[y])} • SS ${fmt(data.ss[y])} • Rent ${fmt(data.perYear[y].rentNet)}`}</div>
+                  <div style={{ color: '#a6da95', fontSize: 12 }}>
+                    <div>Contrib {fmt(data.contrib[y])}</div>
+                    <div>SS {fmt(data.ss[y])}</div>
+                    <div>Rent {fmt(data.perYear[y].rentNet)}</div>
+                  </div>
                 </td>
-                <td>
+                <td style={{ verticalAlign: 'top' }}>
                   <div style={{ color: '#f28fad' }}>{fmt(exp)}</div>
-                  <div style={{ color: '#f28fad', fontSize: 12 }}>{`Spend ${fmt(data.spend[y])} • Mortgage ${fmt(data.perYear[y].mortgage)} • RE Costs ${fmt(data.perYear[y].reCarry)} • Extra ${fmt(data.extraExp[y])}`}</div>
+                  <div style={{ color: '#f28fad', fontSize: 12 }}>
+                    <div>Spend {fmt(data.spend[y])}</div>
+                    <div>Mortgage {fmt(data.perYear[y].mortgage)}</div>
+                    <div>RE Costs {fmt(data.perYear[y].reCarry)}</div>
+                    <div>Extra {fmt(data.extraExp[y])}</div>
+                  </div>
                 </td>
-                <td>{fmt(data.endBal[y])}</td>
+                <td style={{ verticalAlign: 'top' }}>{fmt(data.endBal[y])}</td>
               </tr>
             )
           })}
