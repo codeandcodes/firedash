@@ -277,18 +277,16 @@ export function ResultsPage() {
             <ToggleButton value="p75" title="75th percentile">P75</ToggleButton>
             <ToggleButton value="p90" title="90th percentile (optimistic)">P90</ToggleButton>
           </ToggleButtonGroup>
-        </Box>
-        <div className="cards">
-          <div className="card">
-            <div className="card-title">Monte Carlo</div>
-            <div className="card-metric">{loading ? `Computing… ${progress ? Math.round((progress.done/progress.total)*100) : 0}% (${progress?.done||0}/${progress?.total||0})` : mcText}</div>
+          <Box sx={{ flex: 1 }} />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <span style={{ color: '#475569', fontSize: 12 }}>{loading ? (progress ? `Computing… ${Math.round((progress.done/progress.total)*100)}% (${progress.done}/${progress.total})` : 'Computing…') : mcText}</span>
             {loading && progress && (
-              <Box sx={{ mt: 1 }}>
+              <Box sx={{ width: 140 }}>
                 <LinearProgress variant="determinate" value={Math.max(0, Math.min(100, Math.round((progress.done/progress.total)*100))) } />
               </Box>
             )}
-          </div>
-        </div>
+          </Box>
+        </Box>
         {series && !loading && (
           <>
             <h2>Portfolio Balance — Fan Chart</h2>
