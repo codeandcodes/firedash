@@ -1,5 +1,6 @@
 import type { HistoricalDataset } from '@types/historical'
 import type { AssetClass } from '@types/engine'
+import type { RandomContext } from './random'
 // Import at build time so it's available in the browser bundle
 // If you need to swap data, regenerate this file or add an upload path later.
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -22,7 +23,7 @@ export function tryLoadHistorical(): HistoricalDataset | null {
   return null
 }
 
-export function createBootstrapSampler(dataset: HistoricalDataset, months: number, assets: AssetClass[], opts: BootstrapOptions) {
+export function createBootstrapSampler(dataset: HistoricalDataset, months: number, assets: AssetClass[], opts: BootstrapOptions, rng: RandomContext) {
   const rows = dataset.rows.slice().sort((a, b) => a.year === b.year ? a.month - b.month : a.year - b.year)
   if (!rows.length) throw new Error('Historical dataset has no rows')
   // Build per-asset sequences
@@ -65,7 +66,7 @@ export function createBootstrapSampler(dataset: HistoricalDataset, months: numbe
   // Assemble bootstrapped path
   let remaining = months
   while (remaining > 0) {
-    let start = Math.floor(Math.random() * N)
+    let start = Math.floor(rng.random() * N)
     if (annualMode) start = Math.floor(start / 12) * 12 // align to year boundary
     const take = Math.min(block, remaining)
     for (const a of assets) {
@@ -82,20 +83,13 @@ export function createBootstrapSampler(dataset: HistoricalDataset, months: numbe
         let sigma = opts.jitterSigma
         // If annual-expanded, add higher monthly noise to restore realistic dispersion
         if (annualMode && (sigma ?? 0) < 0.01) sigma = 0.012
-        const jitter = sigma > 0 ? sigma * randn() : 0
+        const jitter = sigma > 0 ? sigma * rng.randn() : 0
         ret[a] = base + jitter
       }
       idx = (idx + 1) % months
       return ret
     }
   }
-}
-
-function randn(): number {
-  let u = 0, v = 0
-  while (u === 0) u = Math.random()
-  while (v === 0) v = Math.random()
-  return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v)
 }
 /*
 Historical block bootstrap sampler.

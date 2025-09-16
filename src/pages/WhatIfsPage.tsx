@@ -1,45 +1,100 @@
 /**
- * What‑Ifs page (unified Sensitivity + Scenarios)
- * - Baseline vs Variant comparison (inflation, spend, retirement age).
- * - Spend search for Optimistic/Realistic/Conservative targets with worker parallelism and caching.
+ * What-Ifs Page
+ * - Manage comparison scenarios against the current baseline snapshot.
+ * - Users can tweak key levers (inflation, spend, retirement age, extra income, Social Security) and rerun simulations.
+ * - Charts reuse baseline components with optional overlays for the active scenario.
  */
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useApp } from '@state/AppContext'
 import type { Snapshot } from '@types/schema'
 import type { MonteSummary, SimOptions } from '@types/engine'
-import { resultsKey, saveCache, loadCache, scenariosKey } from '@state/cache'
-import { MultiLineChart } from '@components/charts/MultiLineChart'
-import { StackedPrincipal } from '@components/charts/StackedPrincipal'
-import { simulateDeterministicSeries } from '@engine/sim'
-import { Box, Button, Card, CardContent, Chip, Grid, Stack, Switch, TextField, Typography } from '@mui/material'
+import { resultsKey, loadCache, saveCache } from '@state/cache'
+import { FanChart } from '@components/charts/FanChart'
+import { YearlyFlowsChart } from '@components/YearlyFlowsChart'
+import { YearlyBalanceSheet } from '@components/YearlyBalanceSheet'
+import { Box, Button, Card, CardContent, Grid, IconButton, Stack, Switch, TextField, ToggleButton, ToggleButtonGroup, Tooltip, Typography } from '@mui/material'
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 
-type VariantSeries = { summary: MonteSummary; p50: number[] }
-type ScenarioResult = Record<string, { monthly: number; success: number }>
+type QuantKey = 'p10' | 'p25' | 'p50' | 'p75' | 'p90'
+
+interface SeriesBundle {
+  summary: MonteSummary
+  series: { months: number; det: { total: number[]; byClass: any }; mc: Record<QuantKey, number[]> }
+  yearEnds: Record<QuantKey, number[]>
+}
+
+interface ScenarioState {
+  id: string
+  name: string
+  inflation: number
+  spend: number
+  retirementAge?: number
+  extraIncomeMonthly?: number
+  ssClaimAge?: number
+  ssMonthly?: number
+  status: 'idle' | 'running' | 'ready' | 'error'
+  summary?: MonteSummary
+  series?: { months: number; det: { total: number[]; byClass: any }; mc: Record<QuantKey, number[]> }
+  yearEnds?: Record<QuantKey, number[]>
+  variantSnapshot?: Snapshot
+  error?: string
+}
+
+function computeYearEnds(series: { mc: Record<QuantKey, number[]> }, years: number): Record<QuantKey, number[]> {
+  const monthsTotal = Math.max(1, years * 12)
+  const endIdx = (y: number) => Math.min(monthsTotal - 1, (y + 1) * 12 - 1)
+  const keys: QuantKey[] = ['p10', 'p25', 'p50', 'p75', 'p90']
+  const result: Record<QuantKey, number[]> = {
+    p10: [], p25: [], p50: [], p75: [], p90: []
+  }
+  for (const key of keys) {
+    result[key] = Array.from({ length: years }, (_, y) => series.mc[key]?.[endIdx(y)] ?? 0)
+  }
+  return result
+}
+
+function buildScenarioSnapshot(base: Snapshot, scenario: ScenarioState): Snapshot {
+  const s: Snapshot = JSON.parse(JSON.stringify(base))
+  s.retirement = { ...s.retirement, expected_spend_monthly: scenario.spend }
+  if (scenario.retirementAge != null) {
+    s.retirement.target_age = scenario.retirementAge
+  }
+
+  // Additional income modeled as monthly contribution to a synthetic account
+  if (scenario.extraIncomeMonthly && scenario.extraIncomeMonthly !== 0) {
+    const contrib = {
+      account_id: '__scenario_extra_income__',
+      amount: scenario.extraIncomeMonthly,
+      frequency: 'monthly' as const,
+      start: s.timestamp
+    }
+    s.contributions = [...(s.contributions || []), contrib]
+  }
+
+  if (scenario.ssClaimAge != null || scenario.ssMonthly != null) {
+    const ssArr = [...(s.social_security || [])]
+    const first = ssArr[0] ? { ...ssArr[0] } : { claim_age: scenario.ssClaimAge ?? 62, monthly_amount: scenario.ssMonthly ?? 0 }
+    if (scenario.ssClaimAge != null) first.claim_age = scenario.ssClaimAge
+    if (scenario.ssMonthly != null) first.monthly_amount = scenario.ssMonthly
+    ssArr[0] = first
+    s.social_security = ssArr
+  }
+
+  return s
+}
 
 export function WhatIfsPage() {
   const { snapshot, simOptions } = useApp()
-  const [inflation, setInflation] = useState<number>(simOptions.inflation)
-  const [spend, setSpend] = useState<number>(snapshot?.retirement.expected_spend_monthly || 0)
-  const baseAge = snapshot?.retirement.target_age ?? (snapshot?.person?.current_age != null ? snapshot.person.current_age + 25 : 60)
-  const [retAge, setRetAge] = useState<number>(baseAge as number)
-  const [applyVariantToScenarios, setApplyVariantToScenarios] = useState(true)
+  const BASE_SEED = 12345
+  const [baseline, setBaseline] = useState<SeriesBundle | null>(null)
+  const [baselineLoading, setBaselineLoading] = useState(false)
+  const [quantile, setQuantile] = useState<QuantKey>('p50')
+  const [scenarios, setScenarios] = useState<ScenarioState[]>([])
+  const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null)
+  const [overlayEnabled, setOverlayEnabled] = useState(true)
 
-  const [baseline, setBaseline] = useState<VariantSeries | null>(null)
-  const [variant, setVariant] = useState<VariantSeries | null>(null)
-  const [loading, setLoading] = useState(false)
-  const simWorkerRef = useRef<Worker | null>(null)
-
-  // scenario state
-  const [t50, setT50] = useState(50)
-  const [t75, setT75] = useState(75)
-  const [t90, setT90] = useState(90)
-  const [pathsPerEval, setPathsPerEval] = useState(400)
-  const [scRunning, setScRunning] = useState(false)
-  const [scProgress, setScProgress] = useState('')
-  const [scResults, setScResults] = useState<ScenarioResult | null>(null)
-  const [scCharts, setScCharts] = useState<Record<string, { total: number[]; principal: number[] }> | null>(null)
-
-  const months = useMemo(() => (simOptions.years * 12), [simOptions.years])
+  const years = simOptions.years
   const startYear = useMemo(() => snapshot ? new Date(snapshot.timestamp).getFullYear() : undefined, [snapshot])
   const retAt = useMemo(() => {
     if (!snapshot) return undefined
@@ -54,288 +109,306 @@ export function WhatIfsPage() {
     return undefined
   }, [snapshot])
 
-  // worker bootstrap
   useEffect(() => {
-    if (!simWorkerRef.current) {
-      simWorkerRef.current = new Worker(new URL('../workers/simWorker.ts', import.meta.url), { type: 'module' })
-      simWorkerRef.current.onmessage = (e: MessageEvent<any>) => {
-        const d = e.data
-        if (!d || d.ok === false) { setLoading(false); return }
-        setVariant({ summary: d.summary as MonteSummary, p50: d.series.mc.p50 as number[] })
-        setLoading(false)
-      }
-    }
-    return () => { /* keep worker */ }
-  }, [])
+    setScenarios([])
+    setActiveScenarioId(null)
+  }, [snapshot])
 
-  // baseline load from cache or compute
   useEffect(() => {
     if (!snapshot) { setBaseline(null); return }
-    const key = resultsKey(snapshot, {
-      paths: simOptions.paths,
+    const opts: SimOptions = {
       years: simOptions.years,
       inflation: simOptions.inflation,
       rebalFreq: simOptions.rebalFreq,
+      paths: simOptions.paths,
       mcMode: simOptions.mcMode,
       bootstrapBlockMonths: simOptions.bootstrapBlockMonths,
       bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma
-    })
-    const cached = loadCache<{ series: any; summary: MonteSummary }>(key)
-    if (cached?.series?.mc?.p50) {
-      setBaseline({ summary: cached.summary, p50: cached.series.mc.p50 })
-    } else if (simWorkerRef.current) {
-      setLoading(true)
-      simWorkerRef.current.postMessage({ snapshot, options: { years: simOptions.years, inflation: simOptions.inflation, rebalFreq: simOptions.rebalFreq, paths: Math.min(simOptions.paths, 800), mcMode: simOptions.mcMode, bootstrapBlockMonths: simOptions.bootstrapBlockMonths, bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma, maxPathsForSeries: Math.min(simOptions.paths, 800) } })
-      const original = simWorkerRef.current.onmessage
-      simWorkerRef.current.onmessage = (e: MessageEvent<any>) => {
-        const d = e.data
-        if (!d || d.ok === false) { setLoading(false); simWorkerRef.current!.onmessage = original!; return }
-        setBaseline({ summary: d.summary as MonteSummary, p50: d.series.mc.p50 as number[] })
-        setLoading(false)
-        simWorkerRef.current!.onmessage = original!
-      }
     }
+    const key = resultsKey(snapshot, opts)
+    const cached = loadCache<{ series: SeriesBundle['series']; summary: MonteSummary }>(key)
+    if (cached?.series?.mc?.p50) {
+      setBaseline({ summary: cached.summary, series: cached.series, yearEnds: computeYearEnds(cached.series, simOptions.years) })
+      return
+    }
+    setBaselineLoading(true)
+    const worker = new Worker(new URL('../workers/simWorker.ts', import.meta.url), { type: 'module' })
+    worker.onmessage = (e: MessageEvent<any>) => {
+      const data = e.data
+      worker.terminate()
+      setBaselineLoading(false)
+      if (!data || data.ok === false) {
+        console.error('Failed to compute baseline scenario', data?.error)
+        return
+      }
+      try { saveCache(key, { series: data.series, summary: data.summary }) } catch {}
+      setBaseline({ summary: data.summary as MonteSummary, series: data.series, yearEnds: computeYearEnds(data.series, simOptions.years) })
+    }
+    worker.postMessage({ snapshot, options: { ...opts, maxPathsForSeries: Math.min(simOptions.paths || 1000, 1000), seed: BASE_SEED } })
   }, [snapshot, simOptions])
 
-  function buildVariantSnapshot(): Snapshot | null {
-    if (!snapshot) return null
-    const s: Snapshot = JSON.parse(JSON.stringify(snapshot))
-    s.retirement.expected_spend_monthly = spend
-    if (typeof retAge === 'number') s.retirement.target_age = retAge
-    return s
+  const activeScenario = overlayEnabled ? scenarios.find((s) => s.id === activeScenarioId && s.status === 'ready') : undefined
+
+  const delta = useMemo(() => {
+    if (!baseline || !activeScenario?.summary) return null
+    return {
+      success: (activeScenario.summary.successProbability - baseline.summary.successProbability) * 100,
+      median: activeScenario.summary.medianTerminal - baseline.summary.medianTerminal
+    }
+  }, [baseline, activeScenario])
+
+  function addScenario() {
+    if (!snapshot) return
+    setScenarios((prev) => {
+      const ss = snapshot.social_security && snapshot.social_security.length ? snapshot.social_security[0] : undefined
+      const next: ScenarioState = {
+        id: `scenario-${Date.now()}-${prev.length}`,
+        name: `Scenario ${prev.length + 1}`,
+        inflation: simOptions.inflation,
+        spend: snapshot.retirement.expected_spend_monthly || 0,
+        retirementAge: snapshot.retirement.target_age,
+        extraIncomeMonthly: 0,
+        ssClaimAge: ss?.claim_age,
+        ssMonthly: ss?.monthly_amount,
+        status: 'idle'
+      }
+      setActiveScenarioId(next.id)
+      return [...prev, next]
+    })
   }
 
-  function runVariant() {
-    if (!snapshot || !simWorkerRef.current) return
-    const s = buildVariantSnapshot()!
+  function updateScenario(id: string, patch: Partial<ScenarioState>, resetResult = true) {
+    setScenarios((prev) => prev.map((s) => {
+      if (s.id !== id) return s
+      const next = { ...s, ...patch }
+      if (resetResult) {
+        next.status = 'idle'
+        next.summary = undefined
+        next.series = undefined
+        next.yearEnds = undefined
+        next.variantSnapshot = undefined
+        next.error = undefined
+      }
+      return next
+    }))
+  }
+
+  function removeScenario(id: string) {
+    setScenarios((prev) => prev.filter((s) => s.id !== id))
+    setActiveScenarioId((cur) => (cur === id ? null : cur))
+  }
+
+  function runScenario(id: string) {
+    if (!snapshot) return
+    const scenario = scenarios.find((s) => s.id === id)
+    if (!scenario) return
+    const variantSnapshot = buildScenarioSnapshot(snapshot, scenario)
     const opts: SimOptions = {
       years: simOptions.years,
-      inflation,
+      inflation: scenario.inflation,
       rebalFreq: simOptions.rebalFreq,
-      paths: Math.min(simOptions.paths, 1000),
-      mcMode: simOptions.mcMode,
-      bootstrapBlockMonths: simOptions.bootstrapBlockMonths,
-      bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma,
-      maxPathsForSeries: Math.min(simOptions.paths, 1000)
-    }
-    const key = resultsKey(s, opts)
-    const cached = loadCache<{ series: any; summary: MonteSummary }>(key)
-    if (cached?.series?.mc?.p50) { setVariant({ summary: cached.summary, p50: cached.series.mc.p50 }); return }
-    setLoading(true)
-    simWorkerRef.current.postMessage({ snapshot: s, options: opts })
-    const onmsg = (e: MessageEvent<any>) => {
-      const data = e.data
-      if (!data || data.ok === false) { setLoading(false); return }
-      try { saveCache(key, { series: data.series, summary: data.summary }) } catch {}
-    }
-    const w = simWorkerRef.current as any
-    const prev = w.onmessage
-    w.onmessage = (ev: MessageEvent<any>) => { onmsg(ev); prev && prev(ev) }
-  }
-
-  function resetVariant() {
-    if (!snapshot) return
-    setInflation(simOptions.inflation)
-    setSpend(snapshot.retirement.expected_spend_monthly || 0)
-    setRetAge(snapshot.retirement.target_age ?? baseAge!)
-    setVariant(null)
-  }
-
-  // Run scenarios with optionally variant inputs
-  function runScenarios() {
-    if (!snapshot) return
-    setScRunning(true)
-    setScResults(null)
-    setScProgress('Starting…')
-    const targets = [
-      { label: `Optimistic (${t50}%)`, success: t50/100 },
-      { label: `Realistic (${t75}%)`, success: t75/100 },
-      { label: `Conservative (${t90}%)`, success: t90/100 }
-    ]
-    // Use baseline or variant
-    const baseSnap = applyVariantToScenarios ? buildVariantSnapshot()! : snapshot
-    const baseOpts: SimOptions = {
-      years: simOptions.years,
-      inflation: applyVariantToScenarios ? inflation : simOptions.inflation,
-      rebalFreq: simOptions.rebalFreq,
+      paths: simOptions.paths,
       mcMode: simOptions.mcMode,
       bootstrapBlockMonths: simOptions.bootstrapBlockMonths,
       bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma
     }
-
-    // Cache check
-    const scKey = scenariosKey(baseSnap, baseOpts, targets, pathsPerEval)
-    const cached = loadCache<ScenarioResult>(scKey)
-    if (cached) {
-      setScResults(cached)
-      // make charts deterministically for each result
-      const c: Record<string, { total: number[]; principal: number[] }> = {}
-      for (const [label, r] of Object.entries(cached)) {
-        const snap = { ...baseSnap, retirement: { ...baseSnap.retirement, expected_spend_monthly: r.monthly } }
-        const det = simulateDeterministicSeries(snap as any, { years: simOptions.years, inflation: baseOpts.inflation, rebalFreq: baseOpts.rebalFreq })
-        c[label] = { total: det.total, principal: det.principalRemaining }
-      }
-      setScCharts(c)
-      setScRunning(false)
-      setScProgress('')
+    const key = resultsKey(variantSnapshot, opts)
+    const cached = loadCache<{ series: SeriesBundle['series']; summary: MonteSummary }>(key)
+    if (cached?.series?.mc?.p50) {
+      setScenarios((prev) => prev.map((s) => s.id === id ? {
+        ...s,
+        status: 'ready',
+        summary: cached.summary,
+        series: cached.series,
+        yearEnds: computeYearEnds(cached.series, simOptions.years),
+        variantSnapshot
+      } : s))
+      setActiveScenarioId(id)
       return
     }
 
-    const baseSpend = baseSnap.retirement?.expected_spend_monthly || 0
-    const totalBal = baseSnap.accounts?.reduce((s, a) => s + (a.holdings||[]).reduce((h, lot) => h + lot.units * lot.price, 0) + (a.cash_balance||0), 0) || 0
-    const years = simOptions.years
-    const baseGuess = baseSpend > 0 ? baseSpend : Math.max(totalBal * 0.04 / 12, totalBal / (years * 12))
-    const lo = Math.max(0, baseGuess / 4)
-    const hi = Math.max(1000, baseGuess * 4)
+    setScenarios((prev) => prev.map((s) => s.id === id ? { ...s, status: 'running', error: undefined } : s))
+    setActiveScenarioId(id)
 
-    const tmp: ScenarioResult = {}
-    let done = 0
-    for (const tgt of targets) {
-      const w = new Worker(new URL('../workers/spendWorker.ts', import.meta.url), { type: 'module' })
-      w.onmessage = (e: MessageEvent<any>) => {
-        const msg = e.data
-        if (msg.type === 'iter') {
-          setScProgress(`${msg.label}: iter ${msg.iter} p=${(msg.p*100).toFixed(0)}% $${Math.round(msg.mid).toLocaleString()}/mo`)
-        } else if (msg.type === 'done') {
-          const r = msg.result as { label: string; monthly: number; success: number }
-          tmp[r.label] = { monthly: r.monthly, success: r.success }
-          done++
-          if (done === targets.length) {
-            setScResults(tmp)
-            saveCache(scKey, tmp)
-            setScRunning(false)
-            setScProgress('')
-            const c: Record<string, { total: number[]; principal: number[] }> = {}
-            for (const [label, rr] of Object.entries(tmp)) {
-              const snap = { ...baseSnap, retirement: { ...baseSnap.retirement, expected_spend_monthly: rr.monthly } }
-              const det = simulateDeterministicSeries(snap as any, { years: simOptions.years, inflation: baseOpts.inflation, rebalFreq: baseOpts.rebalFreq })
-              c[label] = { total: det.total, principal: det.principalRemaining }
-            }
-            setScCharts(c)
-          }
-          w.terminate()
-        } else if (msg.type === 'error') {
-          console.error('Spend worker error', msg.error)
-          done++
-          if (done === targets.length) {
-            setScRunning(false)
-            setScProgress('Error')
-          }
-          w.terminate()
-        }
+    const worker = new Worker(new URL('../workers/simWorker.ts', import.meta.url), { type: 'module' })
+    worker.onmessage = (e: MessageEvent<any>) => {
+      const data = e.data
+      worker.terminate()
+      if (!data || data.ok === false) {
+        setScenarios((prev) => prev.map((s) => s.id === id ? { ...s, status: 'error', error: data?.error || 'Simulation failed' } : s))
+        return
       }
-      w.postMessage({
-        snapshot: baseSnap,
-        options: baseOpts,
-        target: tgt,
-        pathsPerEval,
-        maxIter: 12,
-        lowerBoundMonthly: lo,
-        upperBoundMonthly: hi
-      })
+      try { saveCache(key, { series: data.series, summary: data.summary }) } catch {}
+      setScenarios((prev) => prev.map((s) => s.id === id ? {
+        ...s,
+        status: 'ready',
+        summary: data.summary as MonteSummary,
+        series: data.series,
+        yearEnds: computeYearEnds(data.series, simOptions.years),
+        variantSnapshot
+      } : s))
     }
+    const maxForSeries = Math.min(simOptions.paths ?? 1000, 1000)
+    worker.postMessage({
+      snapshot: variantSnapshot,
+      options: {
+        ...opts,
+        maxPathsForSeries: maxForSeries,
+        // ensure Monte Carlo uses the same path count as baseline unless paths is undefined
+        paths: opts.paths,
+        seed: BASE_SEED
+      }
+    })
   }
-
-  const delta = useMemo(() => {
-    if (!baseline || !variant) return null
-    return {
-      success: (variant.summary.successProbability - baseline.summary.successProbability) * 100,
-      median: (variant.summary.medianTerminal - baseline.summary.medianTerminal)
-    }
-  }, [baseline, variant])
 
   return (
     <section>
-      <h1>What‑Ifs</h1>
+      <h1>What-Ifs</h1>
       {!snapshot && <p>No snapshot loaded.</p>}
       {snapshot && (
         <>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+            <ToggleButtonGroup size="small" value={quantile} exclusive onChange={(_e, v) => v && setQuantile(v)}>
+              <ToggleButton value="p10">P10</ToggleButton>
+              <ToggleButton value="p25">P25</ToggleButton>
+              <ToggleButton value="p50">Median</ToggleButton>
+              <ToggleButton value="p75">P75</ToggleButton>
+              <ToggleButton value="p90">P90</ToggleButton>
+            </ToggleButtonGroup>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Switch checked={overlayEnabled} onChange={(e) => setOverlayEnabled(e.target.checked)} />
+              <Typography variant="body2">Show comparison overlay</Typography>
+            </Stack>
+            {activeScenario?.summary && delta && (
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', color: 'text.secondary', fontSize: 13 }}>
+                <span>Δ Success: {delta.success >= 0 ? '+' : ''}{delta.success.toFixed(1)} pp</span>
+                <span>Δ Median: {delta.median >= 0 ? '+' : ''}${Math.round(delta.median).toLocaleString()}</span>
+              </Box>
+            )}
+            {baselineLoading && <Typography color="text.secondary" variant="body2">Loading baseline…</Typography>}
+          </Box>
+
           <Card sx={{ mb: 2 }}>
             <CardContent>
-              <Typography variant="h6" gutterBottom>Variant Inputs</Typography>
-              <Grid container spacing={2} alignItems="center" sx={{ mb: 1 }}>
-                <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Inflation (annual)" value={inflation} helperText="e.g., 0.02 = 2%" onChange={(e) => setInflation(Number(e.target.value))} /></Grid>
-                <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Retirement Spend (mo)" value={spend} onChange={(e) => setSpend(Number(e.target.value))} /></Grid>
-                <Grid item xs={12} md={3}><TextField type="number" fullWidth label="Retirement Age" value={retAge} onChange={(e) => setRetAge(Number(e.target.value))} /></Grid>
-                <Grid item xs={12} md={3}>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button variant="contained" onClick={runVariant} disabled={loading}>Run Variant</Button>
-                    <Button onClick={resetVariant} disabled={loading}>Reset</Button>
-                  </Box>
-                </Grid>
-              </Grid>
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                <Typography variant="h6">Comparison Scenarios</Typography>
+                <Tooltip title="For broader adjustments, save a new snapshot in the builder and upload it here.">
+                  <InfoOutlinedIcon fontSize="small" color="action" />
+                </Tooltip>
+              </Stack>
+              <Button variant="contained" onClick={addScenario} disabled={!snapshot}>Add Scenario</Button>
             </CardContent>
           </Card>
 
-          <div className="cards">
-            <div className="card">
-              <div className="card-title">Baseline</div>
-              <div className="card-metric">{baseline ? `${(simOptions.paths).toLocaleString()} paths • success ${(baseline.summary.successProbability*100).toFixed(0)}% • median $${Math.round(baseline.summary.medianTerminal).toLocaleString()}` : (loading ? 'Computing…' : '-')}</div>
-            </div>
-            <div className="card">
-              <div className="card-title">Variant</div>
-              <div className="card-metric">{variant ? `${(simOptions.paths).toLocaleString()} paths • success ${(variant.summary.successProbability*100).toFixed(0)}% • median $${Math.round(variant.summary.medianTerminal).toLocaleString()}` : (loading ? 'Computing…' : '-')}</div>
-            </div>
-            <div className="card">
-              <div className="card-title">Delta</div>
-              <div className="card-metric">{delta ? `${delta.success >= 0 ? '+' : ''}${delta.success.toFixed(1)} pp • ${delta.median >= 0 ? '+' : ''}$${Math.round(delta.median).toLocaleString()}` : '-'}</div>
-            </div>
-          </div>
-
-          {(baseline && (variant || loading)) && (
-            <>
-              <h2>Median Balance — Baseline vs Variant</h2>
-              <MultiLineChart seriesByKey={{ Baseline: baseline.p50, Variant: (variant?.p50 || new Array(months).fill(0)) }} years={simOptions.years} startYear={startYear} title="Median Portfolio Balance" yLabel="Balance ($)" />
-            </>
+          {scenarios.length === 0 && (
+            <Typography color="text.secondary" sx={{ mb: 2 }}>
+              Add a scenario to experiment with alternate assumptions for a quick comparison against your baseline.
+            </Typography>
           )}
 
-          <Card sx={{ mt: 3 }}>
-            <CardContent>
-              <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1 }}>
-                <Typography variant="h6">Scenarios</Typography>
-                <Chip label="Solve for monthly spend at success targets" size="small" />
-              </Stack>
-              <Grid container spacing={2} alignItems="center">
-                <Grid item xs={12} md={2}><TextField fullWidth type="number" label="Optimistic %" value={t50} onChange={(e)=>setT50(Number(e.target.value)||0)} /></Grid>
-                <Grid item xs={12} md={2}><TextField fullWidth type="number" label="Realistic %" value={t75} onChange={(e)=>setT75(Number(e.target.value)||0)} /></Grid>
-                <Grid item xs={12} md={2}><TextField fullWidth type="number" label="Conservative %" value={t90} onChange={(e)=>setT90(Number(e.target.value)||0)} /></Grid>
-                <Grid item xs={12} md={3}><TextField fullWidth type="number" label="Paths per eval" value={pathsPerEval} onChange={(e)=>setPathsPerEval(Math.max(50, Number(e.target.value)||0))} /></Grid>
-                <Grid item xs={12} md={3}>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <Switch checked={applyVariantToScenarios} onChange={(e) => setApplyVariantToScenarios(e.target.checked)} />
-                    <Typography>Apply variant to scenarios</Typography>
-                  </Stack>
-                </Grid>
-              </Grid>
-              <Stack direction="row" spacing={2} alignItems="center" sx={{ mt: 1 }}>
-                <Button variant="contained" onClick={runScenarios} disabled={scRunning}>Compute</Button>
-                {scRunning && <Typography color="text.secondary">{scProgress}</Typography>}
-              </Stack>
-            </CardContent>
-          </Card>
+          <Stack spacing={2} sx={{ mb: 4 }}>
+            {scenarios.map((sc) => (
+              <Card key={sc.id} variant={sc.id === activeScenarioId ? 'outlined' : undefined}>
+                <CardContent>
+                  <Grid container spacing={2} alignItems="center">
+                    <Grid item xs={12} md={3}>
+                      <TextField label="Scenario name" fullWidth value={sc.name} onChange={(e) => updateScenario(sc.id, { name: e.target.value }, false)} />
+                    </Grid>
+                    <Grid item xs={12} md={2}>
+                      <TextField type="number" label="Inflation (annual)" fullWidth value={sc.inflation} onChange={(e) => updateScenario(sc.id, { inflation: Number(e.target.value) || 0 })} />
+                    </Grid>
+                    <Grid item xs={12} md={2}>
+                      <TextField type="number" label="Retirement spend (mo)" fullWidth value={sc.spend} onChange={(e) => updateScenario(sc.id, { spend: Number(e.target.value) || 0 })} />
+                    </Grid>
+                    <Grid item xs={12} md={2}>
+                      <TextField type="number" label="Retirement age" fullWidth value={sc.retirementAge ?? ''} onChange={(e) => updateScenario(sc.id, { retirementAge: e.target.value === '' ? undefined : Number(e.target.value) })} />
+                    </Grid>
+                    <Grid item xs={12} md={3}>
+                      <Stack direction="row" spacing={1} alignItems="center" justifyContent="flex-end">
+                        <Button variant="outlined" size="small" onClick={() => runScenario(sc.id)} disabled={sc.status === 'running'}>
+                          {sc.status === 'ready' ? 'Re-run' : 'Run scenario'}
+                        </Button>
+                        <Button size="small" onClick={() => setActiveScenarioId(sc.id)} disabled={activeScenarioId === sc.id}>
+                          {activeScenarioId === sc.id ? 'Active' : 'Set active'}
+                        </Button>
+                        <IconButton onClick={() => removeScenario(sc.id)} size="small" aria-label="Remove scenario">
+                          <DeleteOutlineIcon fontSize="small" />
+                        </IconButton>
+                      </Stack>
+                    </Grid>
+                    <Grid item xs={12} md={2}>
+                      <TextField type="number" label="Extra income (mo)" fullWidth value={sc.extraIncomeMonthly ?? 0} onChange={(e) => updateScenario(sc.id, { extraIncomeMonthly: Number(e.target.value) || 0 })} />
+                    </Grid>
+                    <Grid item xs={12} md={2}>
+                      <TextField type="number" label="SS claim age" fullWidth value={sc.ssClaimAge ?? ''} onChange={(e) => updateScenario(sc.id, { ssClaimAge: e.target.value === '' ? undefined : Number(e.target.value) })} />
+                    </Grid>
+                    <Grid item xs={12} md={2}>
+                      <TextField type="number" label="SS monthly" fullWidth value={sc.ssMonthly ?? ''} onChange={(e) => updateScenario(sc.id, { ssMonthly: e.target.value === '' ? undefined : Number(e.target.value) })} />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      {sc.status === 'running' && <Typography color="text.secondary">Running…</Typography>}
+                      {sc.status === 'error' && <Typography color="error">{sc.error || 'Simulation failed'}</Typography>}
+                      {sc.status === 'ready' && sc.summary && (
+                        <Typography color="text.secondary">
+                          Success {(sc.summary.successProbability * 100).toFixed(0)}% • Median ${Math.round(sc.summary.medianTerminal).toLocaleString()}
+                        </Typography>
+                      )}
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
+            ))}
+          </Stack>
 
-          {scResults && (
-            <div className="cards" style={{ marginTop: 12 }}>
-              {Object.entries(scResults).map(([label, r]) => (
-                <div className="card" key={label}>
-                  <div className="card-title">{label}</div>
-                  <div className="card-metric">${r.monthly.toLocaleString()}/mo</div>
-                  <div style={{ color: '#9aa4b2', fontSize: 12 }}>Success ~ {(r.success*100).toFixed(0)}%</div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {scCharts && (
+          {baseline && (
             <>
-              {Object.entries(scCharts).map(([label, s]) => (
-                <Card key={label} sx={{ mt: 2 }}>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>{label} – Balance and Principal</Typography>
-                    <StackedPrincipal total={s.total} principal={s.principal} title={label} startYear={startYear} retAt={retAt as any} xLabel="Year" yLabel="Balance ($)" />
-                  </CardContent>
-                </Card>
-              ))}
+              <h2>Portfolio Balance — Fan Chart</h2>
+              <FanChart
+                p10={baseline.series.mc.p10}
+                p25={baseline.series.mc.p25}
+                p50={baseline.series.mc.p50}
+                p75={baseline.series.mc.p75}
+                p90={baseline.series.mc.p90}
+                years={simOptions.years}
+                startYear={startYear}
+                retAt={retAt}
+                title="Baseline Percentiles"
+                highlight={quantile}
+                overlay={activeScenario?.series ? {
+                  label: activeScenario.name,
+                  p10: activeScenario.series.mc.p10,
+                  p25: activeScenario.series.mc.p25,
+                  p50: activeScenario.series.mc.p50,
+                  p75: activeScenario.series.mc.p75,
+                  p90: activeScenario.series.mc.p90
+                } : undefined}
+              />
+
+              <h2>Yearly Flows — Returns, Income, Expenditures</h2>
+              <YearlyFlowsChart
+                snapshot={snapshot}
+                yearEnds={baseline.yearEnds[quantile]}
+                years={simOptions.years}
+                inflation={simOptions.inflation}
+                startYear={startYear}
+                retAt={retAt}
+                comparison={activeScenario?.yearEnds && activeScenario.variantSnapshot ? {
+                  snapshot: activeScenario.variantSnapshot,
+                  yearEnds: activeScenario.yearEnds[quantile]
+                } : undefined}
+              />
+
+              <YearlyBalanceSheet
+                snapshot={snapshot}
+                yearEnds={baseline.yearEnds[quantile]}
+                years={simOptions.years}
+                inflation={simOptions.inflation}
+                startYear={startYear}
+                comparison={activeScenario?.variantSnapshot && activeScenario.yearEnds ? {
+                  snapshot: activeScenario.variantSnapshot,
+                  yearEnds: activeScenario.yearEnds[quantile]
+                } : undefined}
+              />
             </>
           )}
         </>
@@ -343,3 +416,9 @@ export function WhatIfsPage() {
     </section>
   )
 }
+
+/*
+What-Ifs page – scenario manager with baseline comparison overlays.
+- Users create scenario cards, tweak limited parameters, and run simulations on demand.
+- Charts reuse baseline visuals with optional overlay data from the active scenario.
+*/

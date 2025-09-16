@@ -26,6 +26,14 @@ export interface FanChartProps {
   xLabel?: string
   yLabel?: string
   highlight?: 'p10'|'p25'|'p50'|'p75'|'p90'
+  overlay?: {
+    label?: string
+    p10: number[]
+    p25: number[]
+    p50: number[]
+    p75: number[]
+    p90: number[]
+  }
 }
 
 function niceStep(maxVal: number, targetTicks = 4): number {
@@ -41,7 +49,7 @@ function niceStep(maxVal: number, targetTicks = 4): number {
   return 10 * pow
 }
 
-export const FanChart: React.FC<FanChartProps> = ({ p10, p25, p50, p75, p90, width, height = 320, years, title, startYear, retAt, xLabel = 'Year', yLabel = 'Balance ($)', highlight = 'p50' }) => {
+export const FanChart: React.FC<FanChartProps> = ({ p10, p25, p50, p75, p90, width, height = 320, years, title, startYear, retAt, xLabel = 'Year', yLabel = 'Balance ($)', highlight = 'p50', overlay }) => {
   const [container, setContainer] = useState<HTMLDivElement | null>(null)
   const [autoWidth, setAutoWidth] = useState(0)
   useEffect(() => {
@@ -69,7 +77,10 @@ export const FanChart: React.FC<FanChartProps> = ({ p10, p25, p50, p75, p90, wid
   }, [width, container])
 
   const months = p50.length
-  const maxY = p90.reduce((m, v) => (isFinite(v) ? Math.max(m, v) : m), 0)
+  const baseMax = p90.reduce((m, v) => (isFinite(v) ? Math.max(m, v) : m), 0)
+  const overlayOk = overlay && overlay.p50.length === months
+  const overlayMax = overlayOk ? overlay!.p90.reduce((m, v) => (isFinite(v) ? Math.max(m, v) : m), 0) : 0
+  const maxY = Math.max(baseMax, overlayMax)
   const yStep = niceStep(maxY)
   const axisMax = maxY > 0 ? yStep * Math.ceil(maxY / yStep) : yStep
   const padLeft = 48
@@ -111,6 +122,7 @@ export const FanChart: React.FC<FanChartProps> = ({ p10, p25, p50, p75, p90, wid
   const minorYTicks = yStep > 0
     ? Array.from({ length: tickCount }, (_, i) => ({ v: (i + 0.5) * yStep }))
     : []
+  const overlayLabel = overlay?.label || 'Scenario'
 
   return (
     <div ref={setContainer} style={{ width: '100%' }}>
@@ -149,6 +161,13 @@ export const FanChart: React.FC<FanChartProps> = ({ p10, p25, p50, p75, p90, wid
           const widthHL = 3
           return <path d={linePath(series)} fill="none" stroke={color} strokeWidth={widthHL} />
         })()}
+        {overlayOk && (
+          <g>
+            <path d={areaPath(overlay!.p90, overlay!.p10)} fill="#FECACA33" stroke="none" />
+            <path d={areaPath(overlay!.p75, overlay!.p25)} fill="#FCA5A544" stroke="none" />
+            <path d={linePath(overlay!.p50)} fill="none" stroke="#DC2626" strokeWidth={2.5} strokeDasharray="4 3" />
+          </g>
+        )}
       </g>
 
       {/* Retirement marker */}
@@ -177,7 +196,7 @@ export const FanChart: React.FC<FanChartProps> = ({ p10, p25, p50, p75, p90, wid
 
       {/* Legend */}
       <g transform={`translate(${W - 220}, ${padTop + 8})`} fontSize={10} fill="#334155">
-        <rect x={0} y={0} width={210} height={60} fill="#FFFFFF" stroke="#E5E7EB" rx={6} />
+        <rect x={0} y={0} width={210} height={overlayOk ? 110 : 60} fill="#FFFFFF" stroke="#E5E7EB" rx={6} />
         <g transform="translate(8,6)">
           <rect width={14} height={6} y={2} fill="#4F7BFF22" />
           <text x={20} y={8}>P10–P90</text>
@@ -194,6 +213,14 @@ export const FanChart: React.FC<FanChartProps> = ({ p10, p25, p50, p75, p90, wid
               </g>
             )
           })()}
+          {overlayOk && (
+            <g transform="translate(0,56)">
+              <rect width={14} height={6} y={2} fill="#FCA5A544" />
+              <text x={20} y={8}>{overlayLabel}</text>
+              <line x1={2} x2={16} y1={20} y2={20} stroke="#DC2626" strokeWidth={2.5} strokeDasharray="4 3" />
+              <text x={20} y={24}>Median (comparison)</text>
+            </g>
+          )}
         </g>
       </g>
 
@@ -202,13 +229,19 @@ export const FanChart: React.FC<FanChartProps> = ({ p10, p25, p50, p75, p90, wid
         <g>
           <line x1={hover.x} x2={hover.x} y1={padTop} y2={H - padBottom} stroke="#4F7BFF" strokeDasharray="4 3" opacity={0.6} />
           <circle cx={hover.x} cy={hover.y} r={3} fill="#4F7BFF" />
-          <g transform={`translate(${Math.min(W - 180, hover.x + 8)}, ${Math.max(padTop + 8, hover.y - 10)})`}>
-            <rect width={160} height={64} fill="#FFFFFF" stroke="#E5E7EB" rx={6} />
+          <g transform={`translate(${Math.min(W - 200, hover.x + 8)}, ${Math.max(padTop + 8, hover.y - 10)})`}>
+            <rect width={overlayOk ? 200 : 160} height={overlayOk ? 88 : 64} fill="#FFFFFF" stroke="#E5E7EB" rx={6} />
             <text x={8} y={14} fill="#334155" fontSize={11}>
               {startYear != null ? `${startYear + Math.floor(hover.i/12)} (m${(hover.i%12)+1})` : `Month ${hover.i} (${Math.round(hover.i/12)}y)`}
             </text>
             <text x={8} y={30} fill="#475569" fontSize={11}>Median: {formatCurrency(p50[hover.i])}</text>
             <text x={8} y={46} fill="#475569" fontSize={11}>P25/P75: {formatCurrency(p25[hover.i])} / {formatCurrency(p75[hover.i])}</text>
+            {overlayOk && (
+              <>
+                <text x={8} y={62} fill="#DC2626" fontSize={11}>{overlayLabel} median: {formatCurrency(overlay!.p50[hover.i])}</text>
+                <text x={8} y={78} fill="#DC2626" fontSize={11}>P25/P75: {formatCurrency(overlay!.p25[hover.i])} / {formatCurrency(overlay!.p75[hover.i])}</text>
+              </>
+            )}
           </g>
         </g>
       )}

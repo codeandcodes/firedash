@@ -12,6 +12,7 @@ import { FanChart } from '@components/charts/FanChart'
 import { YearlyBalanceSheet } from '@components/YearlyBalanceSheet'
 import { YearlyFlowsChart } from '@components/YearlyFlowsChart'
 import { YearlyMultiLineChart } from '@components/charts/YearlyMultiLineChart'
+import { SpendScenariosPanel } from '@components/SpendScenariosPanel'
 import type { MonteSummary } from '@types/engine'
 import { P2Quantile } from '@engine/quantile'
 import { LinearProgress, Box, ToggleButton, ToggleButtonGroup, Button, Collapse } from '@mui/material'
@@ -19,6 +20,7 @@ import { resultsKey, saveCache, loadCache } from '@state/cache'
 
 export function ResultsPage() {
   const { snapshot, simOptions } = useApp()
+  const BASE_SEED = 12345
   const [mcSummary, setMcSummary] = useState<MonteSummary | null>(null)
   const [series, setSeries] = useState<null | { months: number; det: { total: number[]; byClass: any }; mc: { p10: number[]; p25: number[]; p50: number[]; p75: number[]; p90: number[] } }>(null)
   const [loading, setLoading] = useState(false)
@@ -101,7 +103,7 @@ export function ResultsPage() {
       return
     }
     // Seed cache + initial MC percentiles (bootstrap only)
-    simWorkerRef.current.postMessage({ snapshot, options: { years: simOptions.years, inflation: simOptions.inflation, rebalFreq: simOptions.rebalFreq, paths: Math.min(simOptions.paths, 1000), mcMode: 'bootstrap', bootstrapBlockMonths: simOptions.bootstrapBlockMonths, bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma, maxPathsForSeries: Math.min(simOptions.paths, 1000) } })
+    simWorkerRef.current.postMessage({ snapshot, options: { years: simOptions.years, inflation: simOptions.inflation, rebalFreq: simOptions.rebalFreq, paths: Math.min(simOptions.paths, 1000), mcMode: 'bootstrap', bootstrapBlockMonths: simOptions.bootstrapBlockMonths, bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma, maxPathsForSeries: Math.min(simOptions.paths, 1000), seed: BASE_SEED } })
     // Then start MC pool progressively updating percentiles
     // We will fill mcPercentiles with P2 estimators per month
     const months = Math.max(1, simOptions.years * 12)
@@ -220,7 +222,7 @@ export function ResultsPage() {
         }
       }
       poolRefs.current.push(w)
-      w.postMessage({ snapshot, options: { years: simOptions.years, inflation: simOptions.inflation, rebalFreq: simOptions.rebalFreq, mcMode: 'bootstrap', bootstrapBlockMonths: simOptions.bootstrapBlockMonths, bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma }, count, batchSize: 10 })
+      w.postMessage({ snapshot, options: { years: simOptions.years, inflation: simOptions.inflation, rebalFreq: simOptions.rebalFreq, mcMode: 'bootstrap', bootstrapBlockMonths: simOptions.bootstrapBlockMonths, bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma, seed: BASE_SEED + i * 1000 }, count, batchSize: 10 })
     }
   }, [snapshot, simOptions])
 
@@ -332,6 +334,7 @@ export function ResultsPage() {
               <Box sx={{ color: 'text.secondary', fontSize: 12, mt: 1 }}>
                 Note: Paths Remaining reflects the sample distribution and is independent of the percentile toggle above.
               </Box>
+              <SpendScenariosPanel snapshot={snapshot} simOptions={simOptions} startYear={startYear ?? undefined} retAt={retAt} />
             </Box>
           </Collapse>
         </div>

@@ -16,6 +16,7 @@ export interface SimOptions {
   bootstrapNoiseSigma?: number
   // Execution controls
   maxWorkers?: number
+  seed?: number
 }
 
 export interface PathStats {

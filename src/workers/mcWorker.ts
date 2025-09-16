@@ -2,6 +2,7 @@
 import type { Snapshot } from '@types/schema'
 import type { SimOptions } from '@types/engine'
 import { simulatePathTotals } from '@engine/sim'
+import { offsetSeed } from '@engine/random'
 
 type Req = {
   snapshot: Snapshot
@@ -16,7 +17,7 @@ self.onmessage = (e: MessageEvent<Req>) => {
     const batchTotals: number[][] = []
     const batchStats: { success: boolean; terminal: number }[] = []
     for (let i = 0; i < count; i++) {
-      const res = simulatePathTotals(snapshot, options)
+      const res = simulatePathTotals(snapshot, { ...options, seed: offsetSeed(options.seed, i) })
       batchTotals.push(res.totals)
       batchStats.push({ success: res.success, terminal: res.terminal })
       if (batchTotals.length >= batchSize) {
@@ -31,4 +32,3 @@ self.onmessage = (e: MessageEvent<Req>) => {
     ;(self as any).postMessage({ type: 'error', error: String(err?.message || err) })
   }
 }
-
