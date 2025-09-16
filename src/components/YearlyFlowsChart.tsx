@@ -3,7 +3,7 @@
  * - Visualizes per-year flows as stacked bars: Income + Returns above 0, Expenditures below 0.
  * - Bars centered within bins; retirement marker line; hover tooltip shows breakdown.
  */
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import type { Snapshot } from '@types/schema'
 import { buildTimeline } from '@engine/schedule'
 import { computeAllocation } from '@engine/alloc'
@@ -27,7 +27,33 @@ export const YearlyFlowsChart: React.FC<{
   width?: number
   height?: number
   title?: string
-}> = ({ snapshot, yearEnds, years, inflation, startYear, retAt, width = 1000, height = 320, title = 'Returns, Income, Expenditures per Year' }) => {
+}> = ({ snapshot, yearEnds, years, inflation, startYear, retAt, width, height = 320, title = 'Returns, Income, Expenditures per Year' }) => {
+  const [container, setContainer] = useState<HTMLDivElement | null>(null)
+  const [autoWidth, setAutoWidth] = useState(0)
+  useEffect(() => {
+    if (typeof width === 'number') return
+    const el = container
+    if (!el) return
+    const update = () => {
+      const next = el.getBoundingClientRect().width
+      if (next > 0) setAutoWidth(next)
+    }
+    update()
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver((entries) => {
+        const entry = entries.length ? entries[entries.length - 1] : null
+        if (!entry) return
+        const next = entry.contentRect.width
+        if (next > 0) setAutoWidth(next)
+      })
+      observer.observe(el)
+      return () => observer.disconnect()
+    }
+    const onResize = () => update()
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [width, container])
+
   const months = years * 12
   const data = useMemo(() => {
     const safe = (n: number | undefined | null) => (typeof n === 'number' && isFinite(n) ? n : 0)
@@ -97,7 +123,8 @@ export const YearlyFlowsChart: React.FC<{
   }, [snapshot, yearEnds, years, inflation, startYear])
 
   const padLeft = 64, padBottom = 28, padTop = 24, padRight = 8
-  const W = width, H = height
+  const resolvedWidth = typeof width === 'number' ? width : autoWidth || 1000
+  const W = resolvedWidth, H = height
   const innerW = W - padLeft - padRight
   const innerH = H - padTop - padBottom
   const n = years
@@ -142,6 +169,7 @@ export const YearlyFlowsChart: React.FC<{
   const [hoverI, setHoverI] = useState<number | null>(null)
 
   return (
+    <div ref={setContainer} style={{ width: '100%' }}>
     <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H}
          onMouseMove={(e) => {
            const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect()
@@ -239,5 +267,6 @@ export const YearlyFlowsChart: React.FC<{
         </g>
       )}
     </svg>
+    </div>
   )
 }

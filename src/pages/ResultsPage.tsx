@@ -290,7 +290,7 @@ export function ResultsPage() {
         {series && !loading && (
           <>
             <h2>Portfolio Balance — Fan Chart</h2>
-            <FanChart p10={series.mc.p10} p25={series.mc.p25} p50={series.mc.p50} p75={series.mc.p75} p90={series.mc.p90} years={simOptions.years} startYear={startYear} retAt={retAt} title="Monte Carlo Percentiles" width={1000} highlight={quantile} />
+            <FanChart p10={series.mc.p10} p25={series.mc.p25} p50={series.mc.p50} p75={series.mc.p75} p90={series.mc.p90} years={simOptions.years} startYear={startYear} retAt={retAt} title="Monte Carlo Percentiles" highlight={quantile} />
             {/* Percentile selector moved to top */}
             <h2>Yearly Flows — Returns, Income, Expenditures</h2>
             {yearEnds && (
@@ -301,7 +301,6 @@ export function ResultsPage() {
                 inflation={simOptions.inflation}
                 startYear={startYear}
                 retAt={retAt}
-                width={1000}
               />
             )}
             {yearEnds && (

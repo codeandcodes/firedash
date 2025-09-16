@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 
 function formatCurrency(n: number) {
   return `$${Math.round(n).toLocaleString()}`
@@ -28,18 +28,60 @@ export interface FanChartProps {
   highlight?: 'p10'|'p25'|'p50'|'p75'|'p90'
 }
 
-export const FanChart: React.FC<FanChartProps> = ({ p10, p25, p50, p75, p90, width = 800, height = 300, years, title, startYear, retAt, xLabel = 'Year', yLabel = 'Balance ($)', highlight = 'p50' }) => {
+function niceStep(maxVal: number, targetTicks = 4): number {
+  if (!isFinite(maxVal) || maxVal <= 0) return 1
+  const raw = maxVal / Math.max(1, targetTicks)
+  if (!isFinite(raw) || raw <= 0) return 1
+  const pow = Math.pow(10, Math.floor(Math.log10(raw)))
+  const candidates = [1, 2, 2.5, 5, 10]
+  for (const c of candidates) {
+    const step = c * pow
+    if (raw <= step) return step
+  }
+  return 10 * pow
+}
+
+export const FanChart: React.FC<FanChartProps> = ({ p10, p25, p50, p75, p90, width, height = 320, years, title, startYear, retAt, xLabel = 'Year', yLabel = 'Balance ($)', highlight = 'p50' }) => {
+  const [container, setContainer] = useState<HTMLDivElement | null>(null)
+  const [autoWidth, setAutoWidth] = useState(0)
+  useEffect(() => {
+    if (typeof width === 'number') return
+    const el = container
+    if (!el) return
+    const update = () => {
+      const next = el.getBoundingClientRect().width
+      if (next > 0) setAutoWidth(next)
+    }
+    update()
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver((entries) => {
+        const entry = entries.length ? entries[entries.length - 1] : null
+        if (!entry) return
+        const next = entry.contentRect.width
+        if (next > 0) setAutoWidth(next)
+      })
+      observer.observe(el)
+      return () => observer.disconnect()
+    }
+    const onResize = () => update()
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [width, container])
+
   const months = p50.length
-  const maxY = Math.max(...p90)
+  const maxY = p90.reduce((m, v) => (isFinite(v) ? Math.max(m, v) : m), 0)
+  const yStep = niceStep(maxY)
+  const axisMax = maxY > 0 ? yStep * Math.ceil(maxY / yStep) : yStep
   const padLeft = 48
-  const padBottom = 28
-  const padTop = 18
+  const padBottom = 40
+  const padTop = 24
   const padRight = 8
-  const W = width, H = height
+  const resolvedWidth = typeof width === 'number' ? width : autoWidth || 800
+  const W = resolvedWidth, H = height
   const innerW = W - padLeft - padRight
   const innerH = H - padTop - padBottom
   const x = (i: number) => padLeft + (i / Math.max(1, months - 1)) * innerW
-  const y = (v: number) => padTop + (maxY ? innerH - (v / maxY) * innerH : innerH)
+  const y = (v: number) => padTop + (axisMax ? innerH - (v / axisMax) * innerH : innerH)
 
   const areaPath = (upper: number[], lower: number[]) => {
     const up = upper.map((v, i) => `${i === 0 ? 'M' : 'L'} ${x(i)} ${y(v)}`).join(' ')
@@ -47,8 +89,6 @@ export const FanChart: React.FC<FanChartProps> = ({ p10, p25, p50, p75, p90, wid
     return `${up} ${lo} Z`
   }
   const linePath = (series: number[]) => series.map((v, i) => `${i === 0 ? 'M' : 'L'} ${x(i)} ${y(v)}`).join(' ')
-
-  const maxLabel = formatCurrency(maxY)
 
   const [hoverI, setHoverI] = useState<number | null>(null)
   const hover = useMemo(() => {
@@ -66,34 +106,14 @@ export const FanChart: React.FC<FanChartProps> = ({ p10, p25, p50, p75, p90, wid
     ticksArr.push({ i: xi, label: startYear ? String(startYear + yi) : String(yi) })
   }
   const xTicks = ticksArr
-  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((t) => ({ v: t * maxY, label: formatAbbrev(t * maxY) }))
-  const minorYTicks = (() => {
-    const arr: { v: number; label: string }[] = []
-    for (let k = 0; k < 5 - 1; k++) {
-      const v1 = yTicks[k].v, v2 = yTicks[k+1].v
-      const mid = (v1 + v2) / 2
-      arr.push({ v: mid, label: formatCurrency(mid) })
-    }
-    return arr
-  })()
-  const monthAbbrev = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-  const minorXTicks = (() => {
-    const arr: { i: number; label: string }[] = []
-    for (let k = 0; k < xTicks.length - 1; k++) {
-      const i1 = xTicks[k].i, i2 = xTicks[k+1].i
-      const mid = Math.round((i1 + i2) / 2)
-      let label = ''
-      if (startYear != null) {
-        const year = startYear + Math.floor(mid/12)
-        const mon = monthAbbrev[mid % 12]
-        label = `${mon} ${year}`
-      }
-      arr.push({ i: mid, label })
-    }
-    return arr
-  })()
+  const tickCount = Math.max(1, Math.ceil(axisMax / yStep))
+  const yTicks = Array.from({ length: tickCount + 1 }, (_, i) => ({ v: i * yStep, label: formatAbbrev(i * yStep) }))
+  const minorYTicks = yStep > 0
+    ? Array.from({ length: tickCount }, (_, i) => ({ v: (i + 0.5) * yStep }))
+    : []
 
   return (
+    <div ref={setContainer} style={{ width: '100%' }}>
     <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H}
          onMouseMove={(e) => {
            const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect()
@@ -112,8 +132,9 @@ export const FanChart: React.FC<FanChartProps> = ({ p10, p25, p50, p75, p90, wid
         {xTicks.map((t, idx) => (
           <line key={idx} y1={padTop} y2={H - padBottom} x1={x(t.i)} x2={x(t.i)} />
         ))}
-        {minorYTicks.map((t, idx) => (<line key={`my${idx}`} x1={padLeft} x2={W - padRight} y1={y(t.v)} y2={y(t.v)} opacity={0.4} />))}
-        {minorXTicks.map((t, idx) => (<line key={`mx${idx}`} y1={padTop} y2={H - padBottom} x1={x(t.i)} x2={x(t.i)} opacity={0.4} />))}
+        {minorYTicks.map((t, idx) => (
+          <line key={`my${idx}`} x1={padLeft} x2={W - padRight} y1={y(t.v)} y2={y(t.v)} opacity={0.35} />
+        ))}
       </g>
 
       <g>
@@ -140,15 +161,17 @@ export const FanChart: React.FC<FanChartProps> = ({ p10, p25, p50, p75, p90, wid
 
       {/* Axes labels and legend */}
       <g fill="#6B7280" fontSize="10">
-        <text x={4} y={padTop + 10}>{maxLabel}</text>
-        <text x={4} y={H - 8}>0</text>
-        {xTicks.map((t, idx) => (<text key={idx} x={x(t.i)} y={H - 6} textAnchor="middle">{t.label}</text>))}
-        {minorXTicks.map((t, idx) => (<text key={`mxl${idx}`} x={x(t.i)} y={H - 6} textAnchor="middle" opacity={0.6} fontSize={9}>{t.label}</text>))}
-        {title && <text x={W / 2} y={14} textAnchor="middle" fill="#334155">{title}</text>}
+        {yTicks.map((t, idx) => (
+          <text key={`yt${idx}`} x={4} y={y(t.v) + 4}>{t.label}</text>
+        ))}
+        {xTicks.map((t, idx) => (
+          <text key={idx} x={x(t.i)} y={H - 14} textAnchor="middle">{t.label}</text>
+        ))}
+        {title && <text x={W / 2} y={16} textAnchor="middle" fill="#334155">{title}</text>}
       </g>
       {/* Axis titles */}
       <g fill="#6B7280" fontSize={11}>
-        <text x={W/2} y={H - 2} textAnchor="middle">{xLabel}</text>
+        <text x={W/2} y={H - 4} textAnchor="middle">{xLabel}</text>
         <text transform={`translate(12 ${H/2}) rotate(-90)`} textAnchor="middle">{yLabel}</text>
       </g>
 
@@ -190,6 +213,7 @@ export const FanChart: React.FC<FanChartProps> = ({ p10, p25, p50, p75, p90, wid
         </g>
       )}
     </svg>
+    </div>
   )
 }
 /*
