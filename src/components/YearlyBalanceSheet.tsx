@@ -206,7 +206,7 @@ export const YearlyBalanceSheet: React.FC<{
               const retTotal = ensure(base.retTotals[y])
               const incTotal = ensure(base.contrib[y]) + ensure(base.ss[y]) + ensure(base.perYear[y].rentNet)
               const expTotal = ensure(base.spend[y]) + ensure(base.perYear[y].mortgage) + ensure(base.perYear[y].reCarry) + ensure(base.extraExp[y])
-              const endCalc = startBase + retTotal + incTotal - expTotal
+              const endCalc = ensure(base.endBal[y])
               runningBaseStart = endCalc
               const isRetStart = base.retYearIdx != null && y === base.retYearIdx
               const isRetired = base.retYearIdx != null && y >= (base.retYearIdx as number)
@@ -216,7 +216,7 @@ export const YearlyBalanceSheet: React.FC<{
                 const returnsVal = ensure(compareData.retTotals[y])
                 const incomeVal = ensure(compareData.contrib[y]) + ensure(compareData.ss[y]) + ensure(compareData.perYear[y]?.rentNet)
                 const expVal = ensure(compareData.spend[y]) + ensure(compareData.perYear[y]?.mortgage) + ensure(compareData.perYear[y]?.reCarry) + ensure(compareData.extraExp[y])
-                const endScenario = startScenario + returnsVal + incomeVal - expVal
+                const endScenario = ensure(compareData.endBal[y])
                 runningScenarioStart = endScenario
                 compRow = {
                   start: startScenario,

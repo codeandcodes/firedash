@@ -317,8 +317,8 @@ export const YearlyFlowsChart: React.FC<{
             <text x={8} y={62} fill="#991B1B" fontSize={11}>Expenditures: {fmtShort(base.exp[hoverI])}</text>
             {hasComparison && compareData && (
               <>
-                <text x={8} y={78} fill="#1D4ED8" fontSize={11}>Scenario income: {fmtShort(compareData.inc[hoverI])}</text>
-                <text x={8} y={94} fill="#93C5FD" fontSize={11}>Scenario returns: {fmtShort(compareData.ret[hoverI])}</text>
+                <text x={8} y={78} fill="#93C5FD" fontSize={11}>Scenario returns: {fmtShort(compareData.ret[hoverI])}</text>
+                <text x={8} y={94} fill="#1D4ED8" fontSize={11}>Scenario income: {fmtShort(compareData.inc[hoverI])}</text>
                 <text x={8} y={110} fill="#B91C1C" fontSize={11}>Scenario exp: {fmtShort(compareData.exp[hoverI])}</text>
               </>
             )}
