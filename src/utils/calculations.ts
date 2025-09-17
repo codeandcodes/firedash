@@ -1,10 +1,9 @@
 import type { Snapshot } from '@types/schema'
 import { buildTimeline } from '@engine/schedule'
-import { simulateDeterministicReturnContribs } from '@engine/sim'
-import { computeAllocation } from '@engine/alloc'
+import { computeAllocation, DEFAULT_RETURNS } from '@engine/alloc'
+import type { AssetClass } from '@types/engine'
 
 const safe = (n: number | undefined | null) => (typeof n === 'number' && isFinite(n) ? n : 0)
-const sum = (a: number[]) => a.reduce((s, x) => s + x, 0)
 
 export interface YearlyBreakdownData {
   year: number
@@ -93,63 +92,63 @@ export function generateYearlyBreakdown(
     startBal[y] = prevEnd
   }
 
-  // Calculate return contributions based on start of year balances
-  const returnsByClassPerYear: Record<string, number>[] = []
-  const tempBalances = { ...computeAllocation(snapshot).byClass }
-  let currentTotal = initialTotal
-  for (let y = 0; y < years; y++) {
-    const yearStartTotal = y === 0 ? initialTotal : endBal[y-1]
-    const yearStartWeights = computeAllocation({ ...snapshot, accounts: [] }).weights // Use default weights, but need to scale by class balances
+  const { weights } = computeAllocation(snapshot)
+  const monthlyParams = (mu: number, sigma: number) => ({ muM: Math.log(1 + mu) / 12, sigmaM: sigma / Math.sqrt(12) })
+  const deterministicReturn = (muM: number) => Math.exp(muM) - 1
 
-    // Approximate start-of-year balance by class
-    const startBalancesByClass = Object.keys(tempBalances).reduce((acc, key) => {
-        acc[key] = (tempBalances[key] / currentTotal) * yearStartTotal;
-        return acc;
-    }, {});
+  const annualRates = Object.fromEntries(
+      Object.entries(DEFAULT_RETURNS).map(([key, val]) => {
+          const { muM } = monthlyParams(val.mu, val.sigma)
+          return [key, Math.pow(1 + deterministicReturn(muM), 12) - 1]
+      })
+  ) as Record<AssetClass, number>
 
-    const returnContribs = simulateDeterministicReturnContribs(
-        {...snapshot, accounts:[]}, // a bit of a hack to get the returns based on weights
-        { years: 1 }
-    );
-    const yearlyReturnByClass = {}
-    for(const key in returnContribs) {
-        yearlyReturnByClass[key] = sum(returnContribs[key]) * (startBalancesByClass[key] || 0) / initialTotal
-    }
-    returnsByClassPerYear.push(yearlyReturnByClass)
-
-    // Update balances for next year's approximation
-    currentTotal = endBal[y];
-    for(const key in tempBalances) {
-        tempBalances[key] += yearlyReturnByClass[key]
-    }
-  }
 
   const result: YearlyBreakdownData[] = []
   for (let y = 0; y < years; y++) {
-    const income = {
-      total: safe(contrib[y]) + safe(ss[y]) + safe(perYear[y].rentNet),
-      contributions: safe(contrib[y]),
-      socialSecurity: safe(ss[y]),
-      rental: safe(perYear[y].rentNet),
+    const startBalance = safe(startBal[y])
+    const endBalance = safe(endBal[y])
+    const incomeTotal = safe(contrib[y]) + safe(ss[y]) + safe(perYear[y].rentNet)
+    const expendituresTotal = safe(spend[y]) + safe(perYear[y].mortgage) + safe(perYear[y].reCarry) + safe(extraExp[y])
+    const totalReturns = endBalance - startBalance - (incomeTotal - expendituresTotal)
+
+    const expectedReturnsByClass = {} as Record<string, number>
+    let expectedTotalReturns = 0
+    for (const assetClass in weights) {
+        const w = weights[assetClass as AssetClass] || 0
+        const classBalance = startBalance * w
+        const classReturn = classBalance * (annualRates[assetClass as AssetClass] || 0)
+        expectedReturnsByClass[assetClass] = classReturn
+        expectedTotalReturns += classReturn
     }
-    const expenditures = {
-      total: safe(spend[y]) + safe(perYear[y].mortgage) + safe(perYear[y].reCarry) + safe(extraExp[y]),
-      spending: safe(spend[y]),
-      mortgage: safe(perYear[y].mortgage),
-      realEstateCosts: safe(perYear[y].reCarry),
-      extra: safe(extraExp[y]),
+
+    const scalingFactor = expectedTotalReturns === 0 ? 0 : totalReturns / expectedTotalReturns;
+
+    const finalReturnsByClass = {} as Record<string, number>
+    for (const assetClass in expectedReturnsByClass) {
+        finalReturnsByClass[assetClass] = expectedReturnsByClass[assetClass] * scalingFactor
     }
-    const totalReturns = safe(endBal[y]) - safe(startBal[y]) - (income.total - expenditures.total)
 
     result.push({
       year: (snapshot.timestamp ? new Date(snapshot.timestamp).getFullYear() : new Date().getFullYear()) + y,
-      startBalance: safe(startBal[y]),
-      endBalance: safe(endBal[y]),
-      income,
-      expenditures,
+      startBalance,
+      endBalance,
+      income: {
+        total: incomeTotal,
+        contributions: safe(contrib[y]),
+        socialSecurity: safe(ss[y]),
+        rental: safe(perYear[y].rentNet),
+      },
+      expenditures: {
+        total: expendituresTotal,
+        spending: safe(spend[y]),
+        mortgage: safe(perYear[y].mortgage),
+        realEstateCosts: safe(perYear[y].reCarry),
+        extra: safe(extraExp[y]),
+      },
       returns: {
         total: totalReturns,
-        byClass: returnsByClassPerYear[y] || {},
+        byClass: finalReturnsByClass,
       },
       isRetired: tl.retirementAt != null && y >= Math.floor(tl.retirementAt / 12),
     })
