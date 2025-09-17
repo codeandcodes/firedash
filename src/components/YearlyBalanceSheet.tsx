@@ -82,7 +82,7 @@ export const YearlyBalanceSheet: React.FC<{
             <th>Income</th>
             <th>Expenditures</th>
             <th>End</th>
-            {compareData && (
+            {comparisonBreakdown && (
               <>
                 <th>Start (Scenario)</th>
                 <th>Returns (Scenario)</th>
