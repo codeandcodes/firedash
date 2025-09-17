@@ -7,10 +7,6 @@ import React, { useEffect, useMemo, useState } from 'react'
 import type { Snapshot } from '@types/schema'
 import { buildTimeline } from '@engine/schedule'
 import { computeAllocation } from '@engine/alloc'
-import { simulateDeterministicReturnContribs } from '@engine/sim'
-import type { AssetClass } from '@types/engine'
-
-function sum(a: number[]) { return a.reduce((s, x) => s + x, 0) }
 
 function fmtShort(n: number) {
   const a = Math.abs(n)
@@ -106,23 +102,21 @@ export const YearlyFlowsChart: React.FC<{
           if (retired) spend[y] += spendMonthly * Math.exp(inflM * m)
         }
       }
-      const contribByClass = simulateDeterministicReturnContribs(snap, { years })
-      const returnsByYear: { all: number; byClass: Record<string, number> }[] = []
-      const classes: AssetClass[] = ['US_STOCK','INTL_STOCK','BONDS','REAL_ESTATE']
+      const endBal: number[] = new Array(years).fill(0)
+      const startBal: number[] = new Array(years).fill(0)
+      const initialTotal = Number.isFinite(computeAllocation(snap).total) ? computeAllocation(snap).total : 0
       for (let y = 0; y < years; y++) {
-        const ms = y*12, me = Math.min(months - 1, (y+1)*12 - 1)
-        const byClass: Record<string, number> = {}
-        let s = 0
-        for (const k of classes) { const v = sum(contribByClass[k].slice(ms, me + 1)); byClass[k] = v; s += v }
-        returnsByYear.push({ all: s, byClass })
+        const prevEnd = y === 0 ? initialTotal : endBal[y - 1]
+        endBal[y] = safe(ends[y])
+        startBal[y] = prevEnd
       }
-
       const inc: number[] = new Array(years).fill(0)
       const exp: number[] = new Array(years).fill(0)
-      const ret: number[] = Array.from({ length: years }, (_, y) => safe(returnsByYear[y].all))
+      const ret: number[] = new Array(years).fill(0)
       for (let y = 0; y < years; y++) {
         inc[y] = safe(contrib[y]) + safe(ss[y]) + safe(perYear[y].rentNet)
         exp[y] = safe(spend[y]) + safe(perYear[y].mortgage) + safe(perYear[y].reCarry) + safe(extraExp[y])
+        ret[y] = safe(endBal[y]) - safe(startBal[y]) - (inc[y] - exp[y])
       }
       return { inc, exp, ret }
     }
