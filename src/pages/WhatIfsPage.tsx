@@ -13,6 +13,7 @@ import { FanChart } from '@components/charts/FanChart'
 import { YearlyFlowsChart } from '@components/YearlyFlowsChart'
 import { YearlyBalanceSheet } from '@components/YearlyBalanceSheet'
 import { Box, Button, Card, CardContent, Grid, IconButton, Stack, Switch, TextField, ToggleButton, ToggleButtonGroup, Tooltip, Typography } from '@mui/material'
+import { generateYearlyBreakdown, YearlyBreakdownData } from '../utils/calculations'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 
@@ -22,6 +23,7 @@ interface SeriesBundle {
   summary: MonteSummary
   series: { months: number; det: { total: number[]; byClass: any }; mc: Record<QuantKey, number[]> }
   yearEnds: Record<QuantKey, number[]>
+  breakdown: Record<QuantKey, YearlyBreakdownData[]>
 }
 
 interface ScenarioState {
@@ -38,6 +40,7 @@ interface ScenarioState {
   series?: { months: number; det: { total: number[]; byClass: any }; mc: Record<QuantKey, number[]> }
   yearEnds?: Record<QuantKey, number[]>
   variantSnapshot?: Snapshot
+  breakdown?: Record<QuantKey, YearlyBreakdownData[]>
   error?: string
 }
 
@@ -125,12 +128,17 @@ export function WhatIfsPage() {
       bootstrapBlockMonths: simOptions.bootstrapBlockMonths,
       bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma
     }
-    const key = resultsKey(snapshot, opts)
-    const cached = loadCache<{ series: SeriesBundle['series']; summary: MonteSummary }>(key)
-    if (cached?.series?.mc?.p50) {
-      setBaseline({ summary: cached.summary, series: cached.series, yearEnds: computeYearEnds(cached.series, simOptions.years) })
-      return
-    }
+    // const key = resultsKey(snapshot, opts)
+    // const cached = loadCache<{ series: SeriesBundle['series']; summary: MonteSummary }>(key)
+    // if (cached?.series?.mc?.p50) {
+    //   const yearEnds = computeYearEnds(cached.series, simOptions.years)
+    //   const breakdown = {} as Record<QuantKey, YearlyBreakdownData[]>
+    //   for (const k of Object.keys(yearEnds) as QuantKey[]) {
+    //     breakdown[k] = generateYearlyBreakdown(snapshot, simOptions.years, simOptions.inflation, yearEnds[k])
+    //   }
+    //   setBaseline({ summary: cached.summary, series: cached.series, yearEnds, breakdown })
+    //   return
+    // }
     setBaselineLoading(true)
     const worker = new Worker(new URL('../workers/simWorker.ts', import.meta.url), { type: 'module' })
     worker.onmessage = (e: MessageEvent<any>) => {
@@ -141,8 +149,13 @@ export function WhatIfsPage() {
         console.error('Failed to compute baseline scenario', data?.error)
         return
       }
-      try { saveCache(key, { series: data.series, summary: data.summary }) } catch {}
-      setBaseline({ summary: data.summary as MonteSummary, series: data.series, yearEnds: computeYearEnds(data.series, simOptions.years) })
+      // try { saveCache(key, { series: data.series, summary: data.summary }) } catch {}
+      const yearEnds = computeYearEnds(data.series, simOptions.years)
+      const breakdown = {} as Record<QuantKey, YearlyBreakdownData[]>
+      for (const k of Object.keys(yearEnds) as QuantKey[]) {
+        breakdown[k] = generateYearlyBreakdown(snapshot, simOptions.years, simOptions.inflation, yearEnds[k])
+      }
+      setBaseline({ summary: data.summary as MonteSummary, series: data.series, yearEnds, breakdown })
     }
     worker.postMessage({ snapshot, options: { ...opts, maxPathsForSeries: Math.min(simOptions.paths || 1000, 1000), seed: BASE_SEED } })
   }, [snapshot, simOptions])
@@ -212,22 +225,28 @@ export function WhatIfsPage() {
       bootstrapBlockMonths: simOptions.bootstrapBlockMonths,
       bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma
     }
-    const key = resultsKey(variantSnapshot, opts)
-    const cached = loadCache<{ series: SeriesBundle['series']; summary: MonteSummary }>(key)
-    if (cached?.series?.mc?.p50) {
-      setScenarios((prev) => prev.map((s) => s.id === id ? {
-        ...s,
-        status: 'ready',
-        summary: cached.summary,
-        series: cached.series,
-        yearEnds: computeYearEnds(cached.series, simOptions.years),
-        variantSnapshot
-      } : s))
-      setActiveScenarioId(id)
-      return
-    }
+    // const key = resultsKey(variantSnapshot, opts)
+    // const cached = loadCache<{ series: SeriesBundle['series']; summary: MonteSummary }>(key)
+    // if (cached?.series?.mc?.p50) {
+    //   const yearEnds = computeYearEnds(cached.series, simOptions.years)
+    //   const breakdown = {} as Record<QuantKey, YearlyBreakdownData[]>
+    //   for (const k of Object.keys(yearEnds) as QuantKey[]) {
+    //     breakdown[k] = generateYearlyBreakdown(variantSnapshot, simOptions.years, scenario.inflation, yearEnds[k])
+    //   }
+    //   setScenarios((prev) => prev.map((s) => s.id === id ? {
+    //     ...s,
+    //     status: 'ready',
+    //     summary: cached.summary,
+    //     series: cached.series,
+    //     yearEnds,
+    //     breakdown,
+    //     variantSnapshot
+    //   } : s))
+    //   setActiveScenarioId(id)
+    //   return
+    // }
 
-    setScenarios((prev) => prev.map((s) => s.id === id ? { ...s, status: 'running', error: undefined } : s))
+    setScenarios((prev) => prev.map((s) => s.id === id ? { ...s, status: 'running', error: undefined, breakdown: undefined } : s))
     setActiveScenarioId(id)
 
     const worker = new Worker(new URL('../workers/simWorker.ts', import.meta.url), { type: 'module' })
@@ -238,13 +257,19 @@ export function WhatIfsPage() {
         setScenarios((prev) => prev.map((s) => s.id === id ? { ...s, status: 'error', error: data?.error || 'Simulation failed' } : s))
         return
       }
-      try { saveCache(key, { series: data.series, summary: data.summary }) } catch {}
+      // try { saveCache(key, { series: data.series, summary: data.summary }) } catch {}
+      const yearEnds = computeYearEnds(data.series, simOptions.years)
+      const breakdown = {} as Record<QuantKey, YearlyBreakdownData[]>
+      for (const k of Object.keys(yearEnds) as QuantKey[]) {
+        breakdown[k] = generateYearlyBreakdown(variantSnapshot, simOptions.years, scenario.inflation, yearEnds[k])
+      }
       setScenarios((prev) => prev.map((s) => s.id === id ? {
         ...s,
         status: 'ready',
         summary: data.summary as MonteSummary,
         series: data.series,
-        yearEnds: computeYearEnds(data.series, simOptions.years),
+        yearEnds,
+        breakdown,
         variantSnapshot
       } : s))
     }
@@ -386,28 +411,13 @@ export function WhatIfsPage() {
 
               <h2>Yearly Flows — Returns, Income, Expenditures</h2>
               <YearlyFlowsChart
-                snapshot={snapshot}
-                yearEnds={baseline.yearEnds[quantile]}
-                years={simOptions.years}
-                inflation={simOptions.inflation}
-                startYear={startYear}
-                retAt={retAt}
-                comparison={activeScenario?.yearEnds && activeScenario.variantSnapshot ? {
-                  snapshot: activeScenario.variantSnapshot,
-                  yearEnds: activeScenario.yearEnds[quantile]
-                } : undefined}
+                breakdown={baseline.breakdown[quantile]}
+                comparisonBreakdown={activeScenario?.breakdown?.[quantile]}
               />
 
               <YearlyBalanceSheet
-                snapshot={snapshot}
-                yearEnds={baseline.yearEnds[quantile]}
-                years={simOptions.years}
-                inflation={simOptions.inflation}
-                startYear={startYear}
-                comparison={activeScenario?.variantSnapshot && activeScenario.yearEnds ? {
-                  snapshot: activeScenario.variantSnapshot,
-                  yearEnds: activeScenario.yearEnds[quantile]
-                } : undefined}
+                breakdown={baseline.breakdown[quantile]}
+                comparisonBreakdown={activeScenario?.breakdown?.[quantile]}
               />
             </>
           )}
