@@ -161,7 +161,39 @@ export const YearlyBalanceSheet: React.FC<{
                 <td style={{ verticalAlign: 'top' }}>{fmt(row.endBalance)}</td>
                 {compRow && (
                   <>
-                    <td style={{ background: '#EFF6FF', verticalAlign: 'top' }}>{fmt(compRow.startBalance)}</td>
+                    <td style={{ background: compRow.isRetired ? (compRow.isRetirementStart ? '#FFF7ED' : '#EFF6FF') : '#EFF6FF', verticalAlign: 'top' }}>
+                      <div>{fmt(compRow.startBalance)}</div>
+                      {compRow.isRetirementStart && (
+                        <div style={{ marginTop: 4 }}>
+                          <span style={{
+                            padding: '2px 6px',
+                            fontSize: 11,
+                            color: '#B45309',
+                            border: '1px solid #F59E0B',
+                            borderRadius: 10,
+                            whiteSpace: 'nowrap',
+                            background: '#FFFBEB'
+                          }}>
+                            Retirement starts
+                          </span>
+                        </div>
+                      )}
+                      {!compRow.isRetirementStart && compRow.isRetired && (
+                        <div style={{ marginTop: 4 }}>
+                          <span style={{
+                            padding: '2px 6px',
+                            fontSize: 11,
+                            color: '#166534',
+                            border: '1px solid #22C55E',
+                            borderRadius: 10,
+                            whiteSpace: 'nowrap',
+                            background: '#DCFCE7'
+                          }}>
+                            Retired
+                          </span>
+                        </div>
+                      )}
+                    </td>
                     <td style={{ background: '#EFF6FF', verticalAlign: 'top' }}>
                       <div style={{ color: '#14532D' }}>{fmt(compRow.returns.total)}</div>
                       <div style={{ color: '#166534', fontSize: 12 }}>
