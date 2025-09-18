@@ -17,6 +17,9 @@ import type { MonteSummary } from '@types/engine'
 import { P2Quantile } from '@engine/quantile'
 import { LinearProgress, Box, ToggleButton, ToggleButtonGroup, Button, Collapse } from '@mui/material'
 import { resultsKey, saveCache, loadCache } from '@state/cache'
+import { generateYearlyBreakdown, YearlyBreakdownData } from '../utils/calculations'
+
+type QuantKey = 'p10' | 'p25' | 'p50' | 'p75' | 'p90'
 
 export function ResultsPage() {
   const { snapshot, simOptions } = useApp()
@@ -27,8 +30,9 @@ export function ResultsPage() {
   const simWorkerRef = useRef<Worker | null>(null)
   const poolRefs = useRef<Worker[]>([])
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
-  const [quantile, setQuantile] = useState<'p10'|'p25'|'p50'|'p75'|'p90'>('p50')
-  const [yearEnds, setYearEnds] = useState<null | { p10: number[]; p25: number[]; p50: number[]; p75: number[]; p90: number[] }>(null)
+  const [quantile, setQuantile] = useState<QuantKey>('p50')
+  const [yearEnds, setYearEnds] = useState<null | Record<QuantKey, number[]>>(null)
+  const [breakdown, setBreakdown] = useState<null | Record<QuantKey, YearlyBreakdownData[]>>(null)
   const [aliveFrac, setAliveFrac] = useState<number[] | null>(null)
   const [showAdvanced, setShowAdvanced] = useState(false)
 
@@ -70,38 +74,34 @@ export function ResultsPage() {
     setLoading(true)
     setProgress(null)
     // Try cache
-    const cacheKey = resultsKey(snapshot, {
-      paths: simOptions.paths,
-      years: simOptions.years,
-      inflation: simOptions.inflation,
-      rebalFreq: simOptions.rebalFreq,
-      mcMode: simOptions.mcMode,
-      bootstrapBlockMonths: simOptions.bootstrapBlockMonths,
-      bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma
-    })
-    const cached = loadCache<{ series: any; summary: MonteSummary; yearEnds?: { p10:number[]; p25:number[]; p50:number[]; p75:number[]; p90:number[] }; aliveFrac?: number[] }>(cacheKey)
-    if (cached) {
-      setSeries(cached.series)
-      setMcSummary(cached.summary)
-      if (cached.yearEnds) setYearEnds(cached.yearEnds)
-      if (cached.aliveFrac) setAliveFrac(cached.aliveFrac)
-      // derive per-year ends from cached monthly series
-      try {
-        const monthsC = Math.max(1, simOptions.years * 12)
-        const endIdx = (y: number) => Math.min(monthsC - 1, (y + 1) * 12 - 1)
-        const yr = {
-          p10: Array.from({ length: simOptions.years }, (_, y) => cached.series.mc.p10[endIdx(y)]),
-          p25: Array.from({ length: simOptions.years }, (_, y) => cached.series.mc.p25[endIdx(y)]),
-          p50: Array.from({ length: simOptions.years }, (_, y) => cached.series.mc.p50[endIdx(y)]),
-          p75: Array.from({ length: simOptions.years }, (_, y) => cached.series.mc.p75[endIdx(y)]),
-          p90: Array.from({ length: simOptions.years }, (_, y) => cached.series.mc.p90[endIdx(y)])
-        }
-        if (!cached.yearEnds) setYearEnds(yr)
-      } catch {}
-      setLoading(false)
-      setProgress(null)
-      return
-    }
+    // const cacheKey = resultsKey(snapshot, {
+    //   paths: simOptions.paths,
+    //   years: simOptions.years,
+    //   inflation: simOptions.inflation,
+    //   rebalFreq: simOptions.rebalFreq,
+    //   mcMode: simOptions.mcMode,
+    //   bootstrapBlockMonths: simOptions.bootstrapBlockMonths,
+    //   bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma
+    // })
+    // const cached = loadCache<{ series: any; summary: MonteSummary; yearEnds?: Record<QuantKey, number[]>; aliveFrac?: number[]; breakdown?: Record<QuantKey, YearlyBreakdownData[]> }>(cacheKey)
+    // if (cached) {
+    //   setSeries(cached.series)
+    //   setMcSummary(cached.summary)
+    //   if (cached.yearEnds) setYearEnds(cached.yearEnds)
+    //   if (cached.aliveFrac) setAliveFrac(cached.aliveFrac)
+    //   if (cached.breakdown) {
+    //     setBreakdown(cached.breakdown)
+    //   } else if (cached.yearEnds) {
+    //     const bd = {} as Record<QuantKey, YearlyBreakdownData[]>
+    //     for (const k of Object.keys(cached.yearEnds) as QuantKey[]) {
+    //       bd[k] = generateYearlyBreakdown(snapshot, simOptions.years, simOptions.inflation, cached.yearEnds[k])
+    //     }
+    //     setBreakdown(bd)
+    //   }
+    //   setLoading(false)
+    //   setProgress(null)
+    //   return
+    // }
     // Seed cache + initial MC percentiles (bootstrap only)
     simWorkerRef.current.postMessage({ snapshot, options: { years: simOptions.years, inflation: simOptions.inflation, rebalFreq: simOptions.rebalFreq, paths: Math.min(simOptions.paths, 1000), mcMode: 'bootstrap', bootstrapBlockMonths: simOptions.bootstrapBlockMonths, bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma, maxPathsForSeries: Math.min(simOptions.paths, 1000), seed: BASE_SEED } })
     // Then start MC pool progressively updating percentiles
@@ -203,13 +203,18 @@ export function ResultsPage() {
           setYearEnds(curYearEnds)
           const curAliveFrac = Array.from({ length: yearsN }, (_, y) => (received ? Math.max(0, Math.min(1, aliveCounts[y] / received)) : 0))
           setAliveFrac(curAliveFrac)
+          const bd = {} as Record<QuantKey, YearlyBreakdownData[]>
+          for (const k of Object.keys(curYearEnds) as QuantKey[]) {
+            bd[k] = generateYearlyBreakdown(snapshot, simOptions.years, simOptions.inflation, curYearEnds[k])
+          }
+          setBreakdown(bd)
           setMcSummary({ successProbability: received ? successes / received : 0, medianTerminal: termP2.get(), p10Terminal: (termP10 as any).get?.() ?? NaN, p90Terminal: (termP90 as any).get?.() ?? NaN } as any)
           // update cache with yearEnds and aliveFrac as well
-          try {
-            const snap = snapshot
-            const res = loadCache<any>(cacheKey) || {}
-            saveCache(cacheKey, { ...res, series: res.series || series, summary: { successProbability: received ? successes / received : 0, medianTerminal: termP2.get(), p10Terminal: (termP10 as any).get?.() ?? NaN, p90Terminal: (termP90 as any).get?.() ?? NaN }, yearEnds: curYearEnds, aliveFrac: curAliveFrac })
-          } catch {}
+          // try {
+          //   const snap = snapshot
+          //   const res = loadCache<any>(cacheKey) || {}
+          //   saveCache(cacheKey, { ...res, series: res.series || series, summary: { successProbability: received ? successes / received : 0, medianTerminal: termP2.get(), p10Terminal: (termP10 as any).get?.() ?? NaN, p90Terminal: (termP90 as any).get?.() ?? NaN }, yearEnds: curYearEnds, aliveFrac: curAliveFrac, breakdown: bd })
+          // } catch {}
         } else if (msg.type === 'done') {
           // reduce when all workers finished
           if (poolRefs.current.every((wr) => (wr as any).__done)) {
@@ -295,23 +300,14 @@ export function ResultsPage() {
             <FanChart p10={series.mc.p10} p25={series.mc.p25} p50={series.mc.p50} p75={series.mc.p75} p90={series.mc.p90} years={simOptions.years} startYear={startYear} retAt={retAt} title="Monte Carlo Percentiles" highlight={quantile} />
             {/* Percentile selector moved to top */}
             <h2>Yearly Flows — Returns, Income, Expenditures</h2>
-            {yearEnds && (
+            {breakdown && (
               <YearlyFlowsChart
-                snapshot={snapshot}
-                yearEnds={quantile === 'p10' ? yearEnds.p10 : quantile === 'p25' ? yearEnds.p25 : quantile === 'p75' ? yearEnds.p75 : quantile === 'p90' ? yearEnds.p90 : yearEnds.p50}
-                years={simOptions.years}
-                inflation={simOptions.inflation}
-                startYear={startYear}
-                retAt={retAt}
+                breakdown={breakdown[quantile]}
               />
             )}
-            {yearEnds && (
+            {breakdown && (
               <YearlyBalanceSheet
-                snapshot={snapshot}
-                yearEnds={quantile === 'p10' ? yearEnds.p10 : quantile === 'p25' ? yearEnds.p25 : quantile === 'p75' ? yearEnds.p75 : quantile === 'p90' ? yearEnds.p90 : yearEnds.p50}
-                years={simOptions.years}
-                inflation={simOptions.inflation}
-                startYear={startYear}
+                breakdown={breakdown[quantile]}
                 aliveFrac={aliveFrac || undefined}
               />
             )}

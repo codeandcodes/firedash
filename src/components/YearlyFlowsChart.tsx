@@ -4,9 +4,7 @@
  * - Bars centered within bins; retirement marker line; hover tooltip shows breakdown.
  */
 import React, { useEffect, useMemo, useState } from 'react'
-import type { Snapshot } from '@types/schema'
-import { buildTimeline } from '@engine/schedule'
-import { computeAllocation } from '@engine/alloc'
+import type { YearlyBreakdownData } from '../utils/calculations'
 
 function fmtShort(n: number) {
   const a = Math.abs(n)
@@ -18,17 +16,12 @@ function fmtShort(n: number) {
 }
 
 export const YearlyFlowsChart: React.FC<{
-  snapshot: Snapshot
-  yearEnds: number[]
-  years: number
-  inflation: number
-  startYear?: number
-  retAt?: number
+  breakdown: YearlyBreakdownData[]
+  comparisonBreakdown?: YearlyBreakdownData[]
   width?: number
   height?: number
   title?: string
-  comparison?: { snapshot: Snapshot; yearEnds: number[] }
-}> = ({ snapshot, yearEnds, years, inflation, startYear, retAt, width, height = 320, title = 'Returns, Income, Expenditures per Year', comparison }) => {
+}> = ({ breakdown, comparisonBreakdown, width, height = 320, title = 'Returns, Income, Expenditures per Year' }) => {
   const [container, setContainer] = useState<HTMLDivElement | null>(null)
   const [autoWidth, setAutoWidth] = useState(0)
   useEffect(() => {
@@ -55,76 +48,21 @@ export const YearlyFlowsChart: React.FC<{
     return () => window.removeEventListener('resize', onResize)
   }, [width, container])
 
-  const months = years * 12
+  const years = breakdown.length
   const flowData = useMemo(() => {
-    const calc = (snap: Snapshot, ends: number[]) => {
-      const safe = (n: number | undefined | null) => (typeof n === 'number' && isFinite(n) ? n : 0)
-      const tl = buildTimeline(snap, years)
-      const inflM = Math.log(1 + inflation) / 12
-      const ssMonthly = (snap.social_security || []).reduce((s, ss) => Math.max(s, ss.monthly_amount || 0), 0)
-      const spendMonthly = Math.max(0, snap.retirement.expected_spend_monthly || 0)
-      const perYear = Array.from({ length: years }, () => ({ rentNet: 0, mortgage: 0, reCarry: 0 }))
-      for (const re of snap.real_estate || []) {
-        const taxes = re.taxes || 0
-        const ins = re.insurance || 0
-        const maint = (re.maintenance_pct || 0) * (re.value || 0)
-        const rNet = re.rental ? ((re.rental.rent || 0) * (1 - (re.rental.vacancy_pct || 0)) - (re.rental.expenses || 0)) : 0
-        const P = Math.max(0, re.mortgage_balance || 0)
-        const pay = Math.max(0, re.payment || 0)
-        const r = Math.max(0, (re.rate || 0) / 12)
-        let mortgageMonths = 0
-        if (P > 0 && pay > 0) {
-          if (r > 0 && pay > P * r) mortgageMonths = Math.ceil(Math.log(pay / (pay - r * P)) / Math.log(1 + r))
-          else if (r === 0) mortgageMonths = Math.ceil(P / pay)
-          else mortgageMonths = months
-        }
-        for (let m = 0; m < months; m++) {
-          const y = Math.floor(m / 12)
-          perYear[y].rentNet += rNet
-          perYear[y].reCarry += taxes/12 + ins/12 + maint/12
-          if (m < mortgageMonths) perYear[y].mortgage += pay
-        }
-      }
-      const contrib: number[] = new Array(years).fill(0)
-      const extraExp: number[] = new Array(years).fill(0)
-      for (const cf of tl.cashflows) {
-        if (cf.kind === 'property') continue
-        const y = Math.floor(cf.monthIndex / 12)
-        if (cf.amount > 0) contrib[y] += cf.amount; else extraExp[y] += -cf.amount
-      }
-      const ss: number[] = new Array(years).fill(0)
-      const spend: number[] = new Array(years).fill(0)
-      for (let y = 0; y < years; y++) {
-        const ms = y*12, me = Math.min(months - 1, (y+1)*12 - 1)
-        for (let m = ms; m <= me; m++) {
-          const retired = tl.retirementAt == null ? true : m >= (tl.retirementAt as number)
-          if (tl.ssStartMonth != null && m >= (tl.ssStartMonth as number)) ss[y] += ssMonthly * Math.exp(inflM * m)
-          if (retired) spend[y] += spendMonthly * Math.exp(inflM * m)
-        }
-      }
-      const endBal: number[] = new Array(years).fill(0)
-      const startBal: number[] = new Array(years).fill(0)
-      const initialTotal = Number.isFinite(computeAllocation(snap).total) ? computeAllocation(snap).total : 0
-      for (let y = 0; y < years; y++) {
-        const prevEnd = y === 0 ? initialTotal : endBal[y - 1]
-        endBal[y] = safe(ends[y])
-        startBal[y] = prevEnd
-      }
-      const inc: number[] = new Array(years).fill(0)
-      const exp: number[] = new Array(years).fill(0)
-      const ret: number[] = new Array(years).fill(0)
-      for (let y = 0; y < years; y++) {
-        inc[y] = safe(contrib[y]) + safe(ss[y]) + safe(perYear[y].rentNet)
-        exp[y] = safe(spend[y]) + safe(perYear[y].mortgage) + safe(perYear[y].reCarry) + safe(extraExp[y])
-        ret[y] = safe(endBal[y]) - safe(startBal[y]) - (inc[y] - exp[y])
-      }
-      return { inc, exp, ret }
-    }
     return {
-      base: calc(snapshot, yearEnds),
-      compare: comparison ? calc(comparison.snapshot, comparison.yearEnds) : null
+      base: {
+        inc: breakdown.map(d => d.income.total),
+        exp: breakdown.map(d => d.expenditures.total),
+        ret: breakdown.map(d => d.returns.total),
+      },
+      compare: comparisonBreakdown ? {
+        inc: comparisonBreakdown.map(d => d.income.total),
+        exp: comparisonBreakdown.map(d => d.expenditures.total),
+        ret: comparisonBreakdown.map(d => d.returns.total),
+      } : null
     }
-  }, [snapshot, yearEnds, comparison, years, inflation, months])
+  }, [breakdown, comparisonBreakdown])
 
   const padLeft = 64, padBottom = 28, padTop = 24, padRight = 8
   const resolvedWidth = typeof width === 'number' ? width : autoWidth || 1000
@@ -134,7 +72,7 @@ export const YearlyFlowsChart: React.FC<{
   const n = years
   const base = flowData.base
   const compareData = flowData.compare
-  const labels = useMemo(() => Array.from({ length: years }, (_, i) => (startYear != null ? startYear + i : i)), [years, startYear])
+  const labels = useMemo(() => breakdown.map(d => d.year), [breakdown])
   // Bin-based bar positioning so bars don't hang off the y-axis
   const binW = n > 0 ? innerW / n : innerW
   const barGap = Math.min(12, binW * 0.15)
@@ -248,19 +186,17 @@ export const YearlyFlowsChart: React.FC<{
         })}
       </g>
       {/* Retirement marker */}
-      {typeof retAt === 'number' && retAt >= 0 && (
-        (() => {
-          const rYear = Math.floor(retAt / 12)
-          const idx = Math.max(0, Math.min(n - 1, rYear))
-          const xc = xCenter(idx)
-          return (
-            <g>
-              <line x1={xc} x2={xc} y1={padTop} y2={H - padBottom} stroke="#F59E0B" strokeDasharray="6 3" />
-              <text x={xc + 6} y={padTop + 12} fill="#F59E0B" fontSize={10}>Retirement</text>
-            </g>
-          )
-        })()
-      )}
+      {(() => {
+        const retIdx = breakdown.findIndex(d => d.isRetired)
+        if (retIdx === -1) return null
+        const xc = xCenter(retIdx)
+        return (
+          <g>
+            <line x1={xc} x2={xc} y1={padTop} y2={H - padBottom} stroke="#F59E0B" strokeDasharray="6 3" />
+            <text x={xc + 6} y={padTop + 12} fill="#F59E0B" fontSize={10}>Retirement</text>
+          </g>
+        )
+      })()}
       {/* labels */}
       <g fill="#6B7280" fontSize={10}>
         {(() => {
@@ -311,8 +247,8 @@ export const YearlyFlowsChart: React.FC<{
             <text x={8} y={62} fill="#991B1B" fontSize={11}>Expenditures: {fmtShort(base.exp[hoverI])}</text>
             {hasComparison && compareData && (
               <>
-                <text x={8} y={78} fill="#1D4ED8" fontSize={11}>Scenario income: {fmtShort(compareData.inc[hoverI])}</text>
-                <text x={8} y={94} fill="#93C5FD" fontSize={11}>Scenario returns: {fmtShort(compareData.ret[hoverI])}</text>
+                <text x={8} y={78} fill="#93C5FD" fontSize={11}>Scenario returns: {fmtShort(compareData.ret[hoverI])}</text>
+                <text x={8} y={94} fill="#1D4ED8" fontSize={11}>Scenario income: {fmtShort(compareData.inc[hoverI])}</text>
                 <text x={8} y={110} fill="#B91C1C" fontSize={11}>Scenario exp: {fmtShort(compareData.exp[hoverI])}</text>
               </>
             )}

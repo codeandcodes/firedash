@@ -38,4 +38,3 @@ export function offsetSeed(base: number | undefined, offset: number): number | u
   const combined = (base + offset) >>> 0
   return combined
 }
-
