@@ -27,6 +27,7 @@ export interface YearlyBreakdownData {
     byClass: Record<string, number>
   }
   isRetired: boolean
+  isRetirementStart: boolean
 }
 
 export function generateYearlyBreakdown(
@@ -151,6 +152,7 @@ export function generateYearlyBreakdown(
         byClass: finalReturnsByClass,
       },
       isRetired: tl.retirementAt != null && y >= Math.floor(tl.retirementAt / 12),
+      isRetirementStart: tl.retirementAt != null && y === Math.floor(tl.retirementAt / 12),
     })
   }
 

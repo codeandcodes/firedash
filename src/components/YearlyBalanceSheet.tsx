@@ -97,8 +97,40 @@ export const YearlyBalanceSheet: React.FC<{
           {breakdown.map((row, i) => {
             const compRow = comparisonBreakdown ? comparisonBreakdown[i] : null
             return (
-              <tr key={i} style={row.isRetired ? { background: '#F0FDF4' } : undefined}>
-                <td style={{ verticalAlign: 'top' }}>{row.year}</td>
+              <tr key={i} style={row.isRetired ? { background: row.isRetirementStart ? '#FFF7ED' : '#F0FDF4' } : undefined}>
+                <td style={{ verticalAlign: 'top' }}>
+                  <div>{row.year}</div>
+                  {row.isRetirementStart && (
+                    <div style={{ marginTop: 4 }}>
+                      <span style={{
+                        padding: '2px 6px',
+                        fontSize: 11,
+                        color: '#B45309',
+                        border: '1px solid #F59E0B',
+                        borderRadius: 10,
+                        whiteSpace: 'nowrap',
+                        background: '#FFFBEB'
+                      }}>
+                        Retirement starts
+                      </span>
+                    </div>
+                  )}
+                  {!row.isRetirementStart && row.isRetired && (
+                    <div style={{ marginTop: 4 }}>
+                      <span style={{
+                        padding: '2px 6px',
+                        fontSize: 11,
+                        color: '#166534',
+                        border: '1px solid #22C55E',
+                        borderRadius: 10,
+                        whiteSpace: 'nowrap',
+                        background: '#DCFCE7'
+                      }}>
+                        Retired
+                      </span>
+                    </div>
+                  )}
+                </td>
                 <td style={{ verticalAlign: 'top' }}>{fmt(row.startBalance)}</td>
                 <td style={{ verticalAlign: 'top' }}>
                   <div style={{ color: '#14532D' }}>{fmt(row.returns.total)}</div>
