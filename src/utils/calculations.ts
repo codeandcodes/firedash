@@ -34,7 +34,8 @@ export function generateYearlyBreakdown(
   snapshot: Snapshot,
   years: number,
   inflation: number,
-  yearEnds: number[]
+  yearEnds: number[],
+  baselineBreakdown?: YearlyBreakdownData[]
 ): YearlyBreakdownData[] {
   const months = years * 12
   const tl = buildTimeline(snapshot, years)
@@ -111,7 +112,14 @@ export function generateYearlyBreakdown(
     const endBalance = safe(endBal[y])
     const incomeTotal = safe(contrib[y]) + safe(ss[y]) + safe(perYear[y].rentNet)
     const expendituresTotal = safe(spend[y]) + safe(perYear[y].mortgage) + safe(perYear[y].reCarry) + safe(extraExp[y])
-    const totalReturns = endBalance - startBalance - (incomeTotal - expendituresTotal)
+
+    const isRetired = tl.retirementAt != null && y >= Math.floor(tl.retirementAt / 12)
+    let totalReturns: number
+    if (baselineBreakdown && !isRetired) {
+      totalReturns = baselineBreakdown[y].returns.total
+    } else {
+      totalReturns = endBalance - startBalance - (incomeTotal - expendituresTotal)
+    }
 
     const expectedReturnsByClass = {} as Record<string, number>
     let expectedTotalReturns = 0
