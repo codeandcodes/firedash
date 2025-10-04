@@ -21,7 +21,7 @@ type QuantKey = 'p10' | 'p25' | 'p50' | 'p75' | 'p90'
 
 interface SeriesBundle {
   summary: MonteSummary
-  series: { months: number; det: { total: number[]; byClass: any }; mc: Record<QuantKey, number[]> }
+  series: { months: number; mc: Record<QuantKey, number[]> }
   yearEnds: Record<QuantKey, number[]>
   breakdown: Record<QuantKey, YearlyBreakdownData[]>
 }
@@ -37,7 +37,7 @@ interface ScenarioState {
   ssMonthly?: number
   status: 'idle' | 'running' | 'ready' | 'error'
   summary?: MonteSummary
-  series?: { months: number; det: { total: number[]; byClass: any }; mc: Record<QuantKey, number[]> }
+  series?: { months: number; mc: Record<QuantKey, number[]> }
   yearEnds?: Record<QuantKey, number[]>
   variantSnapshot?: Snapshot
   breakdown?: Record<QuantKey, YearlyBreakdownData[]>

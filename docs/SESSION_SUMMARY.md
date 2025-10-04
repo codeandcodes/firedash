@@ -14,7 +14,7 @@ This document summarizes the major changes, architecture, and key functions so w
   - Deterministic path (fixed real monthly returns derived from annual means).
   - Monte Carlo: Historical block bootstrap from data/historical_returns.json (annual Damodaran returns expanded to monthly, sampled in 12‑month blocks with noise for intra‑year dispersion).
   - Monthly cashflow schedule (contributions/expenses + property flows with carrying costs and mortgage payments until payoff), rebalancing, retirement timing, SS inflow starting at claim age.
-- Charts: Fan chart (P10/P25/Median/P75/P90), deterministic line, stacked area by asset class; minor axis labels; currency axes abbreviated (K/M/B); hovers show calendar dates; retirement markers and table highlight.
+- Charts: Fan chart (P10/P25/Median/P75/P90) with highlight; minor axis labels; currency axes abbreviated (K/M/B); hovers show calendar dates; retirement markers and table highlight.
 
 ## Data Ingestion
 - Monarch importer (src/importers/monarch.ts):
@@ -30,11 +30,10 @@ This document summarizes the major changes, architecture, and key functions so w
 - schedule.ts: buildTimeline → months, retirementAt, consolidated cashflows, rental net monthly.
 - sim.ts:
   - zeroBalances() + dynamic byClass arrays (prevents NaNs when adding new asset classes).
-  - runPath() and runPathWithSeries(): apply monthly returns, cashflows, spend/SS after retirement, rebalance.
-  - tryLoadHistorical() + createBootstrapSampler(): samples contiguous blocks; detects annual-expanded data and aligns on 12‑month boundaries, adds elevated noise to restore dispersion.
+  - runPath(): applies monthly returns, cashflows, spend/SS after retirement, rebalance.
+  - tryLoadHistorical() + createBootstrapSampler(): samples contiguous blocks; detects annual-expanded data and aligns on 12‑month boundaries, adds calibrated noise.
   - simulatePathTotals(): optimized typed-array runner for worker threads.
-  - simulateDeterministicSeries(): returns total/byClass plus principalRemaining series for charts.
-- backtest.ts: wraps deterministic simulation and returns terminal.
+  - simulateSeries(): aggregates Monte Carlo percentiles per month for charting.
 - monteCarlo.ts: runs simulate() with bootstrap sampling, summarizes success and median.
 
 ## UI / State
@@ -43,23 +42,22 @@ This document summarizes the major changes, architecture, and key functions so w
 - BuilderPage: Monarch import; Accordions for General/Retirement; Accounts (Ticker/Name inputs), Real Estate (with estimate helper), Contributions, Expenses, Social Security; pagination for large holdings; lazy preview; inline validation/tooltips.
 - Snapshot: KPI cards; global allocation pie; per-account pies and holdings; clicking account name jumps to its detail card.
 - Results: Monte Carlo worker pool with progressive updates using P^2 quantiles; per‑year end‑balance aggregation (P10/P25/P50/P75/P90) and Alive_Frac (paths remaining). Yearly Balance Sheet with CSV export and retirement badges; Yearly Flows chart with centered bars and retirement marker; fan chart highlights the selected percentile and the summary card shows its final balance. Caching stores yearEnds and aliveFrac.
-- What‑Ifs: Unified Sensitivity + Scenarios under a single page; baseline vs variant comparison; drawdown search for Optimistic/Realistic/Conservative targets; charts use deterministic series; routes `/what-ifs`, `/scenarios`, `/sensitivity` all resolve here.
+- What‑Ifs: Unified Sensitivity + Scenarios under a single page; baseline vs variant comparison; drawdown search for Optimistic/Realistic/Conservative targets; charts overlay Monte Carlo percentiles; routes `/what-ifs`, `/scenarios`, `/sensitivity` all resolve here.
 
 ## Calibration Notes
 - Bootstrap defaults tuned for annual-expanded dataset:
   - Block: 12 (year-aligned); Noise σ ≈ 0.012.
   - Yields more realistic intra‑year movement and upward median for US_STOCK-heavy allocations.
-- Deterministic path uses fixed real returns; doubling ~14y (~5% real) is expected. Monte Carlo median should show better trend with Bootstrap.
 
 ## Key Files & Responsibilities
 - src/importers/monarch.ts – Robust importer and grouping; fresher price logic; sets HoldingLot.name.
 - src/engine/historical.ts – Bootstrap sampler & loader (bundled JSON import).
 - src/engine/schedule.ts – Timeline with consolidated cashflows incl. property flows; retirement and SS start months.
 - src/engine/mortgage.ts – Amortization schedule helper and payoff detection.
-- src/engine/sim.ts – Core monthly loop, deterministic/MC series, bootstrap sampler fallback; depletion handling and typed‑array fast path.
+- src/engine/sim.ts – Core monthly loop with bootstrap sampler fallback; depletion handling and typed‑array fast path.
 - src/engine/alloc.ts – Asset classification and weights; GOLD/CRYPTO added.
 - src/state/AppContext.tsx – Snapshot + simOptions (years, paths, rebalFreq, inflation, bootstrap controls).
-- src/components/charts/* – FanChart/LineChart/MultiLineChart/StackedArea; tooltips, axes, legends, retirement markers.
+- src/components/charts/* – FanChart/LineChart/MultiLineChart; tooltips, axes, legends, retirement markers.
 - src/components/YearlyBalanceSheet.tsx – Per‑year breakdown, CSV export with Alive_Frac.
 - src/components/YearlyFlowsChart.tsx – Stacked flows (returns+income vs expenditures) per year.
 - src/pages/ResultsPage.tsx – Orchestrates workers; progressive updates; caching; per‑year quantiles and paths remaining.

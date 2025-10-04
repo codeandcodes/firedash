@@ -10,7 +10,7 @@ Firedash is a private, web-based dashboard for planning Financial Independence /
 - Real estate modeling with carrying costs and mortgage amortization; SS begins at claim age
 - Unified What‑Ifs (Sensitivity + Scenarios) with baseline vs variant and target success spend search
 - Results overhaul: per‑year quantiles (P10/P25/P50/P75/P90), Yearly Balance Sheet, Yearly Flows, Paths Remaining, CSV export
-- Interactive charts (fan chart, deterministic line, stacked by asset class, yearly flows); minor tick labels; currency axes abbreviated (K/M/B)
+- Interactive charts (fan chart with percentile highlight, yearly flows); minor tick labels; currency axes abbreviated (K/M/B)
 - Material UI, dark/light theme, responsive UI
 
 ## Quick Start
@@ -74,7 +74,7 @@ person?: { current_age? }
 - Builder: Import Monarch JSON; edit General/Retirement; Accounts/Holdings (Ticker/Name); Real Estate (with “Estimate” helper), Contributions, Expenses, Social Security; inline validation/tooltips; Load/Download. Large holdings lists paginate and preview is lazy for speed.
 - Snapshot: KPI cards; global allocation pie; per‑account pies by ticker + holdings tables; rounded, right‑aligned values; clicking an account name jumps to its details
 - Results: Scenario Options (sliders/selects, percentile selector). Worker pool + progressive MC percentiles (historical bootstrap only); per‑year aggregation (P10..P90). Yearly Balance Sheet with CSV export (+ Alive_Frac), Yearly Flows chart (returns/income vs expenditures), retirement markers. The percentile selector highlights the selected line on the fan chart and updates the final-balance summary.
-- What‑Ifs: Unified Sensitivity + Scenarios. Compare Baseline vs Variant (inflation, spend, retirement age) and run monthly drawdown search for success targets (Optimistic/Realistic/Conservative). Charts use deterministic series for clarity.
+- What‑Ifs: Unified Sensitivity + Scenarios. Compare Baseline vs Variant (inflation, spend, retirement age) and run monthly drawdown search for success targets (Optimistic/Realistic/Conservative). Charts overlay Monte Carlo percentiles for clarity.
 - Historical: Upload/replace historical returns (IndexedDB); Yearly Returns chart with axes/hover; Sanity Stats table
 
 ## Commands

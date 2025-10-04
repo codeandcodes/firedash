@@ -2,9 +2,7 @@ import React, { useMemo, useState } from 'react'
 import type { Snapshot } from '@types/schema'
 import type { SimOptions } from '@types/engine'
 import { scenariosKey, loadCache, saveCache } from '@state/cache'
-import { simulateDeterministicSeries } from '@engine/sim'
 import { Button, Card, CardContent, Chip, Grid, Stack, TextField, Typography } from '@mui/material'
-import { StackedPrincipal } from '@components/charts/StackedPrincipal'
 
 type ScenarioResult = Record<string, { monthly: number; success: number }>
 
@@ -23,8 +21,6 @@ export const SpendScenariosPanel: React.FC<SpendScenariosPanelProps> = ({ snapsh
   const [scRunning, setScRunning] = useState(false)
   const [scProgress, setScProgress] = useState('')
   const [scResults, setScResults] = useState<ScenarioResult | null>(null)
-  const [scCharts, setScCharts] = useState<Record<string, { total: number[]; principal: number[] }> | null>(null)
-
   const years = simOptions.years
   const baseOpts: SimOptions = useMemo(() => ({
     years: simOptions.years,
@@ -50,13 +46,6 @@ export const SpendScenariosPanel: React.FC<SpendScenariosPanelProps> = ({ snapsh
     const cached = loadCache<ScenarioResult>(scKey)
     if (cached) {
       setScResults(cached)
-      const c: Record<string, { total: number[]; principal: number[] }> = {}
-      for (const [label, r] of Object.entries(cached)) {
-        const snap = { ...snapshot, retirement: { ...snapshot.retirement, expected_spend_monthly: r.monthly } }
-        const det = simulateDeterministicSeries(snap as any, { years: baseOpts.years, inflation: baseOpts.inflation, rebalFreq: baseOpts.rebalFreq })
-        c[label] = { total: det.total, principal: det.principalRemaining }
-      }
-      setScCharts(c)
       setScRunning(false)
       setScProgress('')
       return
@@ -84,13 +73,6 @@ export const SpendScenariosPanel: React.FC<SpendScenariosPanelProps> = ({ snapsh
           if (done === targets.length) {
             setScResults(tmp)
             try { saveCache(scKey, tmp) } catch {}
-            const c: Record<string, { total: number[]; principal: number[] }> = {}
-            for (const [label, rr] of Object.entries(tmp)) {
-              const snap = { ...snapshot, retirement: { ...snapshot.retirement, expected_spend_monthly: rr.monthly } }
-              const det = simulateDeterministicSeries(snap as any, { years: baseOpts.years, inflation: baseOpts.inflation, rebalFreq: baseOpts.rebalFreq })
-              c[label] = { total: det.total, principal: det.principalRemaining }
-            }
-            setScCharts(c)
             setScRunning(false)
             setScProgress('')
           }
@@ -149,18 +131,6 @@ export const SpendScenariosPanel: React.FC<SpendScenariosPanelProps> = ({ snapsh
           </div>
         )}
 
-        {scCharts && (
-          <>
-            {Object.entries(scCharts).map(([label, s]) => (
-              <Card key={label} sx={{ mt: 2 }}>
-                <CardContent>
-                  <Typography variant="subtitle1" gutterBottom>{label} – Balance and Principal</Typography>
-                  <StackedPrincipal total={s.total} principal={s.principal} title={label} startYear={startYear} retAt={retAt as any} xLabel="Year" yLabel="Balance ($)" />
-                </CardContent>
-              </Card>
-            ))}
-          </>
-        )}
       </CardContent>
     </Card>
   )
@@ -169,5 +139,4 @@ export const SpendScenariosPanel: React.FC<SpendScenariosPanelProps> = ({ snapsh
 /*
 SpendScenariosPanel – worker-driven spend solver used on Results advanced panel.
 - Computes monthly spend targets for desired success probabilities and caches results.
-- Renders quick summary cards plus deterministic balance/principal charts per target.
 */

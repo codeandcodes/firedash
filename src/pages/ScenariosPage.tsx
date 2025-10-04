@@ -1,8 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useApp } from '@state/AppContext'
 import { Card, CardContent, Typography, Stack, Button, Chip, TextField, Grid } from '@mui/material'
-import { simulateDeterministicSeries } from '@engine/sim'
-import { StackedPrincipal } from '@components/charts/StackedPrincipal'
 import { scenariosKey, loadCache, saveCache } from '@state/cache'
 
 type ResultMap = Record<string, { monthly: number; success: number }>
@@ -12,15 +10,10 @@ export function ScenariosPage() {
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState<string>('')
   const [results, setResults] = useState<ResultMap | null>(null)
-  const [charts, setCharts] = useState<Record<string, { total: number[]; principal: number[] }> | null>(null)
-  const workerRef = useRef<Worker | null>(null)
-
   const [t50, setT50] = useState(50)
   const [t75, setT75] = useState(75)
   const [t90, setT90] = useState(90)
   const [pathsPerEval, setPathsPerEval] = useState(400)
-
-  useEffect(() => () => { workerRef.current?.terminate(); workerRef.current = null }, [])
 
   function run() {
     if (!snapshot) return
@@ -65,14 +58,6 @@ export function ScenariosPage() {
             saveCache(key, tmpResults)
             setRunning(false)
             setProgress('')
-            // Build charts deterministically for each result
-            const c: Record<string, { total: number[]; principal: number[] }> = {}
-            for (const [label, r] of Object.entries(tmpResults)) {
-              const snap = { ...snapshot, retirement: { ...snapshot.retirement, expected_spend_monthly: r.monthly } }
-              const det = simulateDeterministicSeries(snap as any, { years: simOptions.years, inflation: simOptions.inflation, rebalFreq: simOptions.rebalFreq })
-              c[label] = { total: det.total, principal: det.principalRemaining }
-            }
-            setCharts(c)
           }
           w.terminate()
         } else if (msg.type === 'error') {
@@ -161,32 +146,6 @@ export function ScenariosPage() {
             </div>
           ))}
         </div>
-      )}
-      {charts && (
-        <>
-          {Object.entries(charts).map(([label, s]) => (
-            <Card key={label} sx={{ mt: 2 }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>{label} – Balance and Principal</Typography>
-                <StackedPrincipal total={s.total} principal={s.principal} title={label}
-                                  startYear={snapshot ? new Date(snapshot.timestamp).getFullYear() : undefined}
-                                  retAt={(() => {
-                                    if (!snapshot) return undefined as any
-                                    const start = new Date(snapshot.timestamp)
-                                    if (snapshot.retirement?.target_date) {
-                                      const rd = new Date(snapshot.retirement.target_date)
-                                      return Math.max(0, (rd.getFullYear() - start.getFullYear()) * 12 + (rd.getMonth() - start.getMonth()))
-                                    }
-                                    if (snapshot.retirement?.target_age != null && snapshot.person?.current_age != null) {
-                                      return Math.round(Math.max(0, snapshot.retirement.target_age - snapshot.person.current_age) * 12)
-                                    }
-                                    return undefined as any
-                                  })()}
-                                  xLabel="Year" yLabel="Balance ($)" />
-              </CardContent>
-            </Card>
-          ))}
-        </>
       )}
         </>
       )}

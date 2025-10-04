@@ -25,7 +25,7 @@ export function ResultsPage() {
   const { snapshot, simOptions } = useApp()
   const BASE_SEED = 12345
   const [mcSummary, setMcSummary] = useState<MonteSummary | null>(null)
-  const [series, setSeries] = useState<null | { months: number; det: { total: number[]; byClass: any }; mc: { p10: number[]; p25: number[]; p50: number[]; p75: number[]; p90: number[] } }>(null)
+  const [series, setSeries] = useState<null | { months: number; mc: { p10: number[]; p25: number[]; p50: number[]; p75: number[]; p90: number[] } }>(null)
   const [loading, setLoading] = useState(false)
   const simWorkerRef = useRef<Worker | null>(null)
   const poolRefs = useRef<Worker[]>([])
@@ -48,7 +48,7 @@ export function ResultsPage() {
         }
         setSeries(data.series)
         setMcSummary(data.summary)
-        // cache deterministic and initial summary
+        // cache initial summary
         if (snapshot) {
           const key = resultsKey(snapshot, {
             paths: simOptions.paths,
