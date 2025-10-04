@@ -74,10 +74,11 @@ function runPath(initial: number, targets: Record<AssetClass, number>, opt: Loop
   let minDrawdown = 0
 
   for (let m = 0; m < opt.months; m++) {
+    const sampled = sampler ? sampler.next() : null
     // apply returns
     ASSET_CLASSES.forEach((k) => {
       const p = paramsM[k]
-      const r = sampler ? sampler.next()[k] : sampleReturn(p.muM, p.sigmaM, ctx)
+      const r = sampled ? sampled[k] : sampleReturn(p.muM, p.sigmaM, ctx)
       balances[k] *= 1 + r
     })
 
@@ -87,8 +88,9 @@ function runPath(initial: number, targets: Record<AssetClass, number>, opt: Loop
     balances.CASH += cf
 
     // real spend and SS (inflation-adjusted)
-    const retired = opt.retAt == null ? true : m >= opt.retAt
-    const spendNominal = retired ? spendReal * Math.exp(inflM * m) : 0
+    const retireAt = opt.retAt ?? 0
+    const retired = opt.retAt == null ? true : m >= retireAt
+    const spendNominal = retired ? spendReal * Math.exp(inflM * Math.max(0, m - retireAt)) : 0
     const ssNominal = (opt.ssAt != null && m >= (opt.ssAt as number)) ? ssReal * Math.exp(inflM * m) : 0
     balances.CASH += ssNominal - spendNominal
 
@@ -239,14 +241,24 @@ export function simulatePathTotals(snapshot: Snapshot, options: SO = {}): { tota
   const totals = new Array<number>(months)
   let minDrawdown = 0
   for (let m = 0; m < months; m++) {
+    const sampled = sampler ? sampler.next() : null
     for (let i = 0; i < 8; i++) {
       const p = paramsM[i]
-      const r = sampler ? (sampler.next() as any)[IDX_ASSET[i]] : sampleReturn(p.muM, p.sigmaM, ctx)
+      const assetKey = IDX_ASSET[i]
+      let r: number
+      if (sampled && typeof sampled[assetKey] === 'number') {
+        r = sampled[assetKey] as number
+      } else {
+        r = sampleReturn(p.muM, p.sigmaM, ctx)
+      }
       balances[i] *= 1 + r
     }
     const cf = cashflows.get(m) || 0
     balances[ASSET_IDX.CASH] += cf
-    const spendNominal = spendMonthly * Math.exp(inflM * m)
+    const retireMonth = (timeline.retirementAt ?? 0)
+    const retired = timeline.retirementAt == null ? true : m >= retireMonth
+    const inflationMonths = Math.max(0, m - retireMonth)
+    const spendNominal = retired ? spendMonthly * Math.exp(inflM * inflationMonths) : 0
     const ssNominal = (timeline.ssStartMonth != null && m >= (timeline.ssStartMonth as number)) ? ssMonthly * Math.exp(inflM * m) : 0
     balances[ASSET_IDX.CASH] += ssNominal - spendNominal
     if (rebalEvery > 0 && (m + 1) % rebalEvery === 0) {
@@ -281,4 +293,3 @@ function realEstateMu(snapshot: Snapshot): number {
   }
   return wmu
 }
-

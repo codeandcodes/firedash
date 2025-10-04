@@ -89,7 +89,7 @@ function buildScenarioSnapshot(base: Snapshot, scenario: ScenarioState): Snapsho
 
 export function WhatIfsPage() {
   const { snapshot, simOptions } = useApp()
-  const BASE_SEED = 12345
+  const [baseSeed] = useState(() => Math.floor(Math.random() * 1_000_000_000))
   const [baseline, setBaseline] = useState<SeriesBundle | null>(null)
   const [baselineLoading, setBaselineLoading] = useState(false)
   const [quantile, setQuantile] = useState<QuantKey>('p50')
@@ -156,7 +156,7 @@ export function WhatIfsPage() {
       }
       setBaseline({ summary: data.summary as MonteSummary, series: data.series, yearEnds, breakdown })
     }
-    worker.postMessage({ snapshot, options: { ...opts, maxPathsForSeries: Math.min(simOptions.paths || 1000, 1000), seed: BASE_SEED } })
+    worker.postMessage({ snapshot, options: { ...opts, maxPathsForSeries: Math.min(simOptions.paths || 1000, 1000), seed: baseSeed } })
   }, [snapshot, simOptions])
 
   const activeScenario = overlayEnabled ? scenarios.find((s) => s.id === activeScenarioId && s.status === 'ready') : undefined
@@ -279,7 +279,7 @@ export function WhatIfsPage() {
         maxPathsForSeries: maxForSeries,
         // ensure Monte Carlo uses the same path count as baseline unless paths is undefined
         paths: opts.paths,
-        seed: BASE_SEED
+        seed: baseSeed
       }
     })
   }

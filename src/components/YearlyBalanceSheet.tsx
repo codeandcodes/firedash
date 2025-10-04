@@ -15,9 +15,9 @@ export const YearlyBalanceSheet: React.FC<{
   const fmt = (n: number) => `$${Math.round(n).toLocaleString()}`
 
   function downloadCsv() {
-    const header = ['Year','Start','Returns','Income','Expenditures','End','Contrib','SS','RentNet','Spend','Mortgage','RE_Costs','Extra','Ret_US','Ret_Intl','Ret_Bonds','Ret_RE','Alive_Frac']
+    const header = ['Year','Start','Returns','Income','Expenditures','Net_Cashflow','Balance_Change','End','Contrib','SS','RentNet','Spend','Mortgage','RE_Costs','Extra','Ret_US','Ret_Intl','Ret_Bonds','Ret_RE','Alive_Frac']
     if (comparisonBreakdown) {
-      header.push('Start_Scenario','Returns_Scenario','Income_Scenario','Expenditures_Scenario','End_Scenario')
+      header.push('Start_Scenario','Returns_Scenario','Income_Scenario','Expenditures_Scenario','Net_Cashflow_Scenario','Balance_Change_Scenario','End_Scenario')
     }
     const rows = [header] as (string|number)[][]
     for (let i = 0; i < breakdown.length; i++) {
@@ -29,6 +29,8 @@ export const YearlyBalanceSheet: React.FC<{
         Math.round(base.returns.total),
         Math.round(base.income.total),
         Math.round(base.expenditures.total),
+        Math.round(base.netCashflow),
+        Math.round(base.balanceChange),
         Math.round(base.endBalance),
         Math.round(base.income.contributions),
         Math.round(base.income.socialSecurity),
@@ -50,6 +52,8 @@ export const YearlyBalanceSheet: React.FC<{
           Math.round(comp.returns.total),
           Math.round(comp.income.total),
           Math.round(comp.expenditures.total),
+          Math.round(comp.netCashflow),
+          Math.round(comp.balanceChange),
           Math.round(comp.endBalance)
         )
       }
@@ -81,6 +85,7 @@ export const YearlyBalanceSheet: React.FC<{
             <th>Returns</th>
             <th>Income</th>
             <th>Expenditures</th>
+            <th>Net Cashflow</th>
             <th>End</th>
             {comparisonBreakdown && (
               <>
@@ -88,6 +93,7 @@ export const YearlyBalanceSheet: React.FC<{
                 <th>Returns (Scenario)</th>
                 <th>Income (Scenario)</th>
                 <th>Expenditures (Scenario)</th>
+                <th>Net Cashflow (Scenario)</th>
                 <th>End (Scenario)</th>
               </>
             )}
@@ -158,6 +164,8 @@ export const YearlyBalanceSheet: React.FC<{
                     <div>Extra {fmt(row.expenditures.extra)}</div>
                   </div>
                 </td>
+                <td style={{ verticalAlign: 'top' }}><div style={{ color: row.netCashflow >= 0 ? '#166534' : '#B91C1C' }}>{fmt(row.netCashflow)}</div></td>
+                <td style={{ verticalAlign: 'top' }}>{fmt(row.balanceChange)}</td>
                 <td style={{ verticalAlign: 'top' }}>{fmt(row.endBalance)}</td>
                 {compRow && (
                   <>
@@ -220,6 +228,8 @@ export const YearlyBalanceSheet: React.FC<{
                         <div>Extra {fmt(compRow.expenditures.extra)}</div>
                       </div>
                     </td>
+                    <td style={{ background: '#EFF6FF', verticalAlign: 'top' }}><div style={{ color: compRow.netCashflow >= 0 ? '#166534' : '#B91C1C' }}>{fmt(compRow.netCashflow)}</div></td>
+                    <td style={{ background: '#EFF6FF', verticalAlign: 'top' }}>{fmt(compRow.balanceChange)}</td>
                     <td style={{ background: '#EFF6FF', verticalAlign: 'top' }}>{fmt(compRow.endBalance)}</td>
                   </>
                 )}

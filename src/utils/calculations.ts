@@ -26,6 +26,8 @@ export interface YearlyBreakdownData {
     total: number
     byClass: Record<string, number>
   }
+  netCashflow: number
+  balanceChange: number
   isRetired: boolean
   isRetirementStart: boolean
 }
@@ -44,6 +46,8 @@ export function generateYearlyBreakdown(
   const spendMonthly = Math.max(0, snapshot.retirement.expected_spend_monthly || 0)
 
   const perYear = Array.from({ length: years }, () => ({ rentNet: 0, mortgage: 0, reCarry: 0 }))
+
+  // Real Estate
   for (const re of snapshot.real_estate || []) {
     const taxes = re.taxes || 0
     const ins = re.insurance || 0
@@ -76,12 +80,14 @@ export function generateYearlyBreakdown(
 
   const ss: number[] = new Array(years).fill(0)
   const spend: number[] = new Array(years).fill(0)
+  const retireMonth = tl.retirementAt ?? null
   for (let y = 0; y < years; y++) {
     const ms = y * 12, me = Math.min(months - 1, (y + 1) * 12 - 1)
     for (let m = ms; m <= me; m++) {
-      const retired = tl.retirementAt == null ? true : m >= (tl.retirementAt as number)
+      const retired = retireMonth == null ? true : m >= retireMonth
+      const inflationMonths = retireMonth == null ? m : Math.max(0, m - retireMonth)
       if (tl.ssStartMonth != null && m >= (tl.ssStartMonth as number)) ss[y] += ssMonthly * Math.exp(inflM * m)
-      if (retired) spend[y] += spendMonthly * Math.exp(inflM * m)
+      if (retired) spend[y] += spendMonthly * Math.exp(inflM * inflationMonths)
     }
   }
 
@@ -112,13 +118,15 @@ export function generateYearlyBreakdown(
     const endBalance = safe(endBal[y])
     const incomeTotal = safe(contrib[y]) + safe(ss[y]) + safe(perYear[y].rentNet)
     const expendituresTotal = safe(spend[y]) + safe(perYear[y].mortgage) + safe(perYear[y].reCarry) + safe(extraExp[y])
+    const netCashflow = incomeTotal - expendituresTotal
+    const balanceChange = endBalance - startBalance
 
     const isRetired = tl.retirementAt != null && y >= Math.floor(tl.retirementAt / 12)
     let totalReturns: number
     if (baselineBreakdown && !isRetired) {
       totalReturns = baselineBreakdown[y].returns.total
     } else {
-      totalReturns = endBalance - startBalance - (incomeTotal - expendituresTotal)
+      totalReturns = balanceChange - netCashflow
     }
 
     const expectedReturnsByClass = {} as Record<string, number>
@@ -159,6 +167,8 @@ export function generateYearlyBreakdown(
         total: totalReturns,
         byClass: finalReturnsByClass,
       },
+      netCashflow,
+      balanceChange,
       isRetired: tl.retirementAt != null && y >= Math.floor(tl.retirementAt / 12),
       isRetirementStart: tl.retirementAt != null && y === Math.floor(tl.retirementAt / 12),
     })

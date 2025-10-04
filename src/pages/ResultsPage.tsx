@@ -23,7 +23,7 @@ type QuantKey = 'p10' | 'p25' | 'p50' | 'p75' | 'p90'
 
 export function ResultsPage() {
   const { snapshot, simOptions } = useApp()
-  const BASE_SEED = 12345
+  const [baseSeed] = useState(() => Math.floor(Math.random() * 1_000_000_000))
   const [mcSummary, setMcSummary] = useState<MonteSummary | null>(null)
   const [series, setSeries] = useState<null | { months: number; mc: { p10: number[]; p25: number[]; p50: number[]; p75: number[]; p90: number[] } }>(null)
   const [loading, setLoading] = useState(false)
@@ -101,7 +101,7 @@ export function ResultsPage() {
     //   return
     // }
     // Seed cache + initial MC percentiles (bootstrap only)
-    simWorkerRef.current.postMessage({ snapshot, options: { years: simOptions.years, inflation: simOptions.inflation, rebalFreq: simOptions.rebalFreq, paths: Math.min(simOptions.paths, 1000), bootstrapBlockMonths: simOptions.bootstrapBlockMonths, bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma, maxPathsForSeries: Math.min(simOptions.paths, 1000), seed: BASE_SEED } })
+    simWorkerRef.current.postMessage({ snapshot, options: { years: simOptions.years, inflation: simOptions.inflation, rebalFreq: simOptions.rebalFreq, paths: Math.min(simOptions.paths, 1000), bootstrapBlockMonths: simOptions.bootstrapBlockMonths, bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma, maxPathsForSeries: Math.min(simOptions.paths, 1000), seed: baseSeed } })
     // Then start MC pool progressively updating percentiles
     // We will fill mcPercentiles with P2 estimators per month
     const months = Math.max(1, simOptions.years * 12)
@@ -144,10 +144,11 @@ export function ResultsPage() {
       w.onmessage = (e: MessageEvent<any>) => {
         const msg = e.data
         if (msg.type === 'batch') {
+          // when batch reaches 10, this message emitted with [b][m] where b is batch size and m is the months in the simulation
           const totalsBatch: number[][] = msg.totals
           const statsBatch: { success: boolean; terminal: number }[] = msg.stats
           for (let b = 0; b < totalsBatch.length; b++) {
-            const arr = totalsBatch[b]
+            const arr = totalsBatch[b]  // array of months to the terminal balance for this month
             for (let m = 0; m < Math.min(months, arr.length); m++) {
               ;(p2[0][m] as any).add(arr[m])
               ;(p2[1][m] as any).add(arr[m])
@@ -225,7 +226,7 @@ export function ResultsPage() {
         }
       }
       poolRefs.current.push(w)
-      w.postMessage({ snapshot, options: { years: simOptions.years, inflation: simOptions.inflation, rebalFreq: simOptions.rebalFreq, bootstrapBlockMonths: simOptions.bootstrapBlockMonths, bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma, seed: BASE_SEED + i * 1000 }, count, batchSize: 10 })
+      w.postMessage({ snapshot, options: { years: simOptions.years, inflation: simOptions.inflation, rebalFreq: simOptions.rebalFreq, bootstrapBlockMonths: simOptions.bootstrapBlockMonths, bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma, seed: baseSeed + i * 1000 }, count, batchSize: 10 })
     }
   }, [snapshot, simOptions])
 
