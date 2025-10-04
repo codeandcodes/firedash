@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "Firedash Monarch Bridge",
+  "description": "Fetch Monarch Money holdings and expose them to Firedash for live snapshots.",
+  "version": "0.1.0",
+  "background": {
+    "service_worker": "dist/background.js",
+    "type": "module"
+  },
+  "permissions": [
+    "storage",
+    "tabs",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://api.monarchmoney.com/*",
+    "https://app.monarchmoney.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://app.monarchmoney.com/*"
+      ],
+      "js": [
+        "dist/content-script.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "externally_connectable": {
+    "matches": [
+      "http://localhost:5173/*",
+      "https://localhost:5173/*",
+      "http://127.0.0.1/*"
+    ]
+  },
+  "action": {
+    "default_title": "Firedash Monarch Bridge"
+  }
+}

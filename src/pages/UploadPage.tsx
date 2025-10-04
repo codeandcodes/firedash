@@ -1,5 +1,6 @@
 import { FileUpload } from '@components/FileUpload'
 import { Card, CardContent, Typography } from '@mui/material'
+import { ExtensionFetchCard } from '@components/ExtensionFetchCard'
 
 export function UploadPage() {
   return (
@@ -12,6 +13,7 @@ export function UploadPage() {
           <FileUpload />
         </CardContent>
       </Card>
+      <ExtensionFetchCard />
     </section>
   )
 }
