@@ -10,8 +10,7 @@ export interface SimOptions {
   inflation?: number // annual
   rebalFreq?: 'annual' | 'quarterly' | 'monthly'
   paths?: number
-  mcMode?: 'bootstrap' | 'regime' | 'gbm'
-  // Bootstrap (historical) specific controls
+  // Historical bootstrap controls
   bootstrapBlockMonths?: number
   bootstrapNoiseSigma?: number
   // Execution controls

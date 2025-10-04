@@ -76,14 +76,14 @@ export const ScenarioOptions: React.FC = () => {
               <Typography gutterBottom>Block (months): {simOptions.bootstrapBlockMonths}</Typography>
             </Tooltip>
             <Slider min={6} max={60} step={1} value={simOptions.bootstrapBlockMonths}
-                    onChange={(_, v) => setSimOptions({ bootstrapBlockMonths: v as number, mcMode: 'bootstrap' })} />
+                    onChange={(_, v) => setSimOptions({ bootstrapBlockMonths: v as number })} />
           </Grid>
           <Grid item xs={12} md={3}>
             <Tooltip title="Extra random noise added to sampled returns">
               <Typography gutterBottom>Noise σ: {simOptions.bootstrapNoiseSigma.toFixed(3)}</Typography>
             </Tooltip>
             <Slider min={0} max={0.03} step={0.001} value={simOptions.bootstrapNoiseSigma}
-                    onChange={(_, v) => setSimOptions({ bootstrapNoiseSigma: v as number, mcMode: 'bootstrap' })} />
+                    onChange={(_, v) => setSimOptions({ bootstrapNoiseSigma: v as number })} />
           </Grid>
           <Grid item xs={12} md={6}>
             <Typography color="text.secondary">Monte Carlo uses historical bootstrap. Place data at <code>data/historical_returns.json</code>.</Typography>
@@ -114,6 +114,6 @@ export const ScenarioOptions: React.FC = () => {
 }
 /*
 Scenario Options panel.
-- Controls years, paths, rebalancing, inflation, percentile, and MC mode with helpful tooltips.
-- Bootstrap mode exposes Block (months) and Noise σ controls.
+- Controls years, paths, rebalancing, inflation, percentile, and worker limits with helpful tooltips.
+- Bootstrap controls expose Block (months) and Noise σ sliders.
 */

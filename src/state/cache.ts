@@ -14,7 +14,6 @@ export function resultsKey(snapshot: Snapshot, opts: SimOptions): string {
       years: opts.years,
       inflation: opts.inflation,
       rebalFreq: opts.rebalFreq,
-      mcMode: opts.mcMode,
       bbm: opts.bootstrapBlockMonths,
       bns: opts.bootstrapNoiseSigma,
       paths: opts.paths
@@ -30,7 +29,6 @@ export function scenariosKey(snapshot: Snapshot, opts: SimOptions, targets: Arra
       years: opts.years,
       inflation: opts.inflation,
       rebalFreq: opts.rebalFreq,
-      mcMode: opts.mcMode,
       bbm: opts.bootstrapBlockMonths,
       bns: opts.bootstrapNoiseSigma
     },

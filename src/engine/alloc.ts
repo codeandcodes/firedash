@@ -53,7 +53,7 @@ export function computeAllocation(snapshot: Snapshot): Allocation {
 }
 /*
 Asset classification and allocation utilities.
-- DEFAULT_RETURNS: coarse annual means/vols by asset class (used for deterministic and GBM/regime baselines).
+- DEFAULT_RETURNS: coarse annual means/vols by asset class (used for deterministic baseline and bootstrap fallback).
 - classifyHolding(): maps ticker/symbols to asset classes (CRYPTO/GOLD/REIT/BONDS/etc.).
 - computeAllocation(): sums current dollar weights across all accounts and real estate.
 */

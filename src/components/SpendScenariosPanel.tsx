@@ -30,7 +30,6 @@ export const SpendScenariosPanel: React.FC<SpendScenariosPanelProps> = ({ snapsh
     years: simOptions.years,
     inflation: simOptions.inflation,
     rebalFreq: simOptions.rebalFreq,
-    mcMode: simOptions.mcMode,
     bootstrapBlockMonths: simOptions.bootstrapBlockMonths,
     bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma
   }), [simOptions])

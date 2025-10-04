@@ -59,7 +59,6 @@ export function ScenariosPage() {
               years: simOptions.years,
               inflation: simOptions.inflation,
               rebalFreq: simOptions.rebalFreq,
-              mcMode: simOptions.mcMode,
               bootstrapBlockMonths: simOptions.bootstrapBlockMonths,
               bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma
             }, targetDefs, pathsPerEval)
@@ -92,7 +91,6 @@ export function ScenariosPage() {
           years: simOptions.years,
           inflation: simOptions.inflation,
           rebalFreq: simOptions.rebalFreq,
-          mcMode: simOptions.mcMode,
           bootstrapBlockMonths: simOptions.bootstrapBlockMonths,
           bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma
         },
@@ -112,7 +110,6 @@ export function ScenariosPage() {
       years: simOptions.years,
       inflation: simOptions.inflation,
       rebalFreq: simOptions.rebalFreq,
-      mcMode: simOptions.mcMode,
       bootstrapBlockMonths: simOptions.bootstrapBlockMonths,
       bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma
     }, [

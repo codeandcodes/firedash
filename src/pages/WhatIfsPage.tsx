@@ -124,7 +124,6 @@ export function WhatIfsPage() {
       inflation: simOptions.inflation,
       rebalFreq: simOptions.rebalFreq,
       paths: simOptions.paths,
-      mcMode: simOptions.mcMode,
       bootstrapBlockMonths: simOptions.bootstrapBlockMonths,
       bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma
     }
@@ -221,7 +220,6 @@ export function WhatIfsPage() {
       inflation: scenario.inflation,
       rebalFreq: simOptions.rebalFreq,
       paths: simOptions.paths,
-      mcMode: simOptions.mcMode,
       bootstrapBlockMonths: simOptions.bootstrapBlockMonths,
       bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma
     }

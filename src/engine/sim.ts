@@ -41,7 +41,6 @@ interface LoopOptions {
   deterministic?: boolean
   retAt?: number
   ssAt?: number
-  mcMode?: 'bootstrap' | 'regime' | 'gbm'
   bootstrapBlockMonths?: number
   bootstrapNoiseSigma?: number
 }
@@ -67,15 +66,11 @@ function runPath(initial: number, targets: Record<AssetClass, number>, opt: Loop
 
   let sampler: { next(): Record<AssetClass, number> } | null = null
   if (!opt.deterministic) {
-    if (opt.mcMode === 'bootstrap') {
-      const hist = tryLoadHistorical()
-      if (hist) {
-        const block = opt.bootstrapBlockMonths ?? 24
-        const noise = opt.bootstrapNoiseSigma ?? 0.005
-        sampler = createBootstrapSampler(hist, opt.months, ASSET_CLASSES, { blockMonths: block, jitterSigma: noise }, ctx)
-      } else sampler = createRegimeSampler(ctx)
-    } else if (opt.mcMode === 'regime') {
-      sampler = createRegimeSampler(ctx)
+    const hist = tryLoadHistorical()
+    if (hist) {
+      const block = opt.bootstrapBlockMonths ?? 24
+      const noise = opt.bootstrapNoiseSigma ?? 0.005
+      sampler = createBootstrapSampler(hist, opt.months, ASSET_CLASSES, { blockMonths: block, jitterSigma: noise }, ctx)
     }
   }
 
@@ -153,7 +148,7 @@ export function simulate(snapshot: Snapshot, options: SimOptions = {}): { summar
   const details: PathStats[] = []
   for (let i = 0; i < paths; i++) {
     const ctx = createRandomContext(offsetSeed(options.seed, i))
-    details.push(runPath(total, weights, { ...loopOpt, mcMode: options.mcMode || 'regime', bootstrapBlockMonths: options.bootstrapBlockMonths, bootstrapNoiseSigma: options.bootstrapNoiseSigma }, ctx))
+    details.push(runPath(total, weights, { ...loopOpt, bootstrapBlockMonths: options.bootstrapBlockMonths, bootstrapNoiseSigma: options.bootstrapNoiseSigma }, ctx))
   }
 
   const terminals = details.map((d) => d.terminal).sort((a, b) => a - b)
@@ -275,7 +270,7 @@ export function simulateSeries(snapshot: Snapshot, options: SimOptions & { maxPa
   const series: number[][] = []
   for (let i = 0; i < maxPaths; i++) {
     const ctx = createRandomContext(offsetSeed(options.seed, i))
-    const s = runPathWithSeries(total, weights, { ...loopOptBase, ssAt: timeline.ssStartMonth, mcMode: options.mcMode || 'regime', bootstrapBlockMonths: options.bootstrapBlockMonths, bootstrapNoiseSigma: options.bootstrapNoiseSigma }, ctx).total
+    const s = runPathWithSeries(total, weights, { ...loopOptBase, ssAt: timeline.ssStartMonth, bootstrapBlockMonths: options.bootstrapBlockMonths, bootstrapNoiseSigma: options.bootstrapNoiseSigma }, ctx).total
     series.push(s)
   }
   const months = timeline.months
@@ -334,14 +329,9 @@ export function simulatePathTotals(snapshot: Snapshot, options: SO = {}): { tota
   }
 
   let sampler: { next(): Record<AssetClass, number> } | null = null
-  if (options.mcMode) {
-    if (options.mcMode === 'bootstrap') {
-      const hist = tryLoadHistorical()
-      if (hist) sampler = createBootstrapSampler(hist, months, IDX_ASSET, { blockMonths: options.bootstrapBlockMonths ?? 24, jitterSigma: options.bootstrapNoiseSigma ?? 0.005 }, ctx)
-      else sampler = createRegimeSampler(ctx)
-    } else if (options.mcMode === 'regime') {
-      sampler = createRegimeSampler(ctx)
-    }
+  const hist = tryLoadHistorical()
+  if (hist) {
+    sampler = createBootstrapSampler(hist, months, IDX_ASSET, { blockMonths: options.bootstrapBlockMonths ?? 24, jitterSigma: options.bootstrapNoiseSigma ?? 0.005 }, ctx)
   }
 
   const totals = new Array<number>(months)
@@ -349,7 +339,7 @@ export function simulatePathTotals(snapshot: Snapshot, options: SO = {}): { tota
   for (let m = 0; m < months; m++) {
     for (let i = 0; i < 8; i++) {
       const p = paramsM[i]
-      const r = options.mcMode ? (sampler ? (sampler.next() as any)[IDX_ASSET[i]] : sampleReturn(p.muM, p.sigmaM, ctx)) : deterministicReturn(p.muM)
+      const r = sampler ? (sampler.next() as any)[IDX_ASSET[i]] : sampleReturn(p.muM, p.sigmaM, ctx)
       balances[i] *= 1 + r
     }
     const cf = cashflows.get(m) || 0
@@ -389,15 +379,11 @@ function runPathWithSeries(initial: number, targets: Record<AssetClass, number>,
   ) as Record<AssetClass, { muM: number; sigmaM: number }>
   let sampler: { next(): Record<AssetClass, number> } | null = null
   if (!opt.deterministic) {
-    if (opt.mcMode === 'bootstrap') {
-      const hist = tryLoadHistorical()
-      if (hist) {
-        const block = opt.bootstrapBlockMonths ?? 24
-        const noise = opt.bootstrapNoiseSigma ?? 0.005
-        sampler = createBootstrapSampler(hist, opt.months, ASSET_CLASSES, { blockMonths: block, jitterSigma: noise }, ctx)
-      } else sampler = createRegimeSampler(ctx)
-    } else if (opt.mcMode === 'regime') {
-      sampler = createRegimeSampler(ctx)
+    const hist = tryLoadHistorical()
+    if (hist) {
+      const block = opt.bootstrapBlockMonths ?? 24
+      const noise = opt.bootstrapNoiseSigma ?? 0.005
+      sampler = createBootstrapSampler(hist, opt.months, ASSET_CLASSES, { blockMonths: block, jitterSigma: noise }, ctx)
     }
   }
 
@@ -472,66 +458,3 @@ function realEstateMu(snapshot: Snapshot): number {
   return wmu
 }
 
-// Regime-based return sampler to model sequences with persistent downturns
-type Regime = 'bull' | 'bear' | 'stagnation'
-interface RegimeParams { mu: Record<AssetClass, number>; sigma: Record<AssetClass, number> }
-
-function createRegimeSampler(ctx: RandomContext) {
-  let state: Regime = 'bull'
-  // Monthly regime transition probabilities
-  const T: Record<Regime, Record<Regime, number>> = {
-    bull: { bull: 0.90, bear: 0.05, stagnation: 0.05 },
-    bear: { bear: 0.85, bull: 0.10, stagnation: 0.05 },
-    stagnation: { stagnation: 0.80, bull: 0.15, bear: 0.05 }
-  }
-  const params: Record<Regime, RegimeParams> = {
-    bull: {
-      mu: { US_STOCK: 0.009, INTL_STOCK: 0.008, BONDS: 0.002, REIT: 0.008, CASH: 0.001, REAL_ESTATE: 0.003, CRYPTO: 0.03, GOLD: 0.002 },
-      sigma: { US_STOCK: 0.04, INTL_STOCK: 0.05, BONDS: 0.015, REIT: 0.06, CASH: 0.002, REAL_ESTATE: 0.03, CRYPTO: 0.20, GOLD: 0.04 }
-    },
-    bear: {
-      mu: { US_STOCK: -0.015, INTL_STOCK: -0.017, BONDS: 0.004, REIT: -0.013, CASH: 0.001, REAL_ESTATE: -0.005, CRYPTO: -0.06, GOLD: 0.01 },
-      sigma: { US_STOCK: 0.07, INTL_STOCK: 0.08, BONDS: 0.02, REIT: 0.08, CASH: 0.002, REAL_ESTATE: 0.05, CRYPTO: 0.30, GOLD: 0.06 }
-    },
-    stagnation: {
-      mu: { US_STOCK: 0.0, INTL_STOCK: 0.0, BONDS: 0.001, REIT: 0.0, CASH: 0.001, REAL_ESTATE: 0.001, CRYPTO: 0.0, GOLD: 0.002 },
-      sigma: { US_STOCK: 0.03, INTL_STOCK: 0.035, BONDS: 0.012, REIT: 0.04, CASH: 0.002, REAL_ESTATE: 0.02, CRYPTO: 0.20, GOLD: 0.03 }
-    }
-  }
-  function stepState() {
-    const r = ctx.random()
-    const row = T[state]
-    let acc = 0
-    for (const s of ['bull','bear','stagnation'] as Regime[]) {
-      acc += row[s]
-      if (r <= acc) { state = s; break }
-    }
-  }
-  return {
-    next(): Record<AssetClass, number> {
-      // evolve state with persistence
-      stepState()
-      const p = params[state]
-      const ret: Record<AssetClass, number> = { US_STOCK: 0, INTL_STOCK: 0, BONDS: 0, REIT: 0, CASH: 0, REAL_ESTATE: 0, CRYPTO: 0 }
-      ASSET_CLASSES.forEach((k) => {
-        const mu = (p.mu as any)[k] ?? 0
-        const sig = (p.sigma as any)[k] ?? 0
-        const r = mu + sig * ctx.randn()
-        ret[k] = r
-      })
-      return ret
-    }
-  }
-}
-/*
-Core simulation loop for deterministic and Monte Carlo paths.
-Key exports:
-- simulate(): Monte Carlo summary + path stats; supports mcMode ('bootstrap'|'regime'|'gbm').
-- simulateDeterministic(): fixed real returns approximation.
-- simulateSeries(): deterministic by-class series and MC percentiles for charts.
-Implementation notes:
-- Timeline includes property-tagged cashflows and ssStartMonth (from claim_age).
-- zeroBalances() & dynamic byClass allocation prevent NaNs when adding assets.
-- Typed-array fast path (simulatePathTotals) used in workers for speed; clamps on depletion and fills remainder with 0.
-- Regime sampler models persistent downturns; Bootstrap sampler preserves historical sequences.
-*/

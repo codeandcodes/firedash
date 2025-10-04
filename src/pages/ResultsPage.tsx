@@ -55,7 +55,6 @@ export function ResultsPage() {
             years: simOptions.years,
             inflation: simOptions.inflation,
             rebalFreq: simOptions.rebalFreq,
-            mcMode: simOptions.mcMode,
             bootstrapBlockMonths: simOptions.bootstrapBlockMonths,
             bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma
           })
@@ -79,7 +78,6 @@ export function ResultsPage() {
     //   years: simOptions.years,
     //   inflation: simOptions.inflation,
     //   rebalFreq: simOptions.rebalFreq,
-    //   mcMode: simOptions.mcMode,
     //   bootstrapBlockMonths: simOptions.bootstrapBlockMonths,
     //   bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma
     // })
@@ -103,7 +101,7 @@ export function ResultsPage() {
     //   return
     // }
     // Seed cache + initial MC percentiles (bootstrap only)
-    simWorkerRef.current.postMessage({ snapshot, options: { years: simOptions.years, inflation: simOptions.inflation, rebalFreq: simOptions.rebalFreq, paths: Math.min(simOptions.paths, 1000), mcMode: 'bootstrap', bootstrapBlockMonths: simOptions.bootstrapBlockMonths, bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma, maxPathsForSeries: Math.min(simOptions.paths, 1000), seed: BASE_SEED } })
+    simWorkerRef.current.postMessage({ snapshot, options: { years: simOptions.years, inflation: simOptions.inflation, rebalFreq: simOptions.rebalFreq, paths: Math.min(simOptions.paths, 1000), bootstrapBlockMonths: simOptions.bootstrapBlockMonths, bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma, maxPathsForSeries: Math.min(simOptions.paths, 1000), seed: BASE_SEED } })
     // Then start MC pool progressively updating percentiles
     // We will fill mcPercentiles with P2 estimators per month
     const months = Math.max(1, simOptions.years * 12)
@@ -227,7 +225,7 @@ export function ResultsPage() {
         }
       }
       poolRefs.current.push(w)
-      w.postMessage({ snapshot, options: { years: simOptions.years, inflation: simOptions.inflation, rebalFreq: simOptions.rebalFreq, mcMode: 'bootstrap', bootstrapBlockMonths: simOptions.bootstrapBlockMonths, bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma, seed: BASE_SEED + i * 1000 }, count, batchSize: 10 })
+      w.postMessage({ snapshot, options: { years: simOptions.years, inflation: simOptions.inflation, rebalFreq: simOptions.rebalFreq, bootstrapBlockMonths: simOptions.bootstrapBlockMonths, bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma, seed: BASE_SEED + i * 1000 }, count, batchSize: 10 })
     }
   }, [snapshot, simOptions])
 

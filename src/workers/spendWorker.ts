@@ -35,7 +35,7 @@ self.onmessage = (e: MessageEvent<SpendReq>) => {
         const mid = (lo + hi) / 2
         let successCount = 0
         for (let i = 0; i < pathsPerEval; i++) {
-          const res = simulatePathTotals(withSpend(snapshot, mid), { ...options, mcMode: options.mcMode || 'regime' })
+          const res = simulatePathTotals(withSpend(snapshot, mid), options)
           if (res.success) successCount++
         }
         const p = successCount / pathsPerEval

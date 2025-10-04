@@ -35,7 +35,6 @@ export const FileUpload: React.FC = () => {
           years: simOptions.years,
           inflation: simOptions.inflation,
           rebalFreq: simOptions.rebalFreq,
-          mcMode: simOptions.mcMode,
           bootstrapBlockMonths: simOptions.bootstrapBlockMonths,
           bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma
         }, targets, 400)
@@ -59,7 +58,6 @@ export const FileUpload: React.FC = () => {
             years: simOptions.years,
             inflation: simOptions.inflation,
             rebalFreq: simOptions.rebalFreq,
-            mcMode: simOptions.mcMode,
             bootstrapBlockMonths: simOptions.bootstrapBlockMonths,
             bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma
           }, target: t, pathsPerEval: 300, maxIter: 10, lowerBoundMonthly: lo, upperBoundMonthly: hi })

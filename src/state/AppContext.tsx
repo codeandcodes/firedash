@@ -5,7 +5,7 @@ import type { SimOptions } from '@types/engine'
 interface AppState {
   snapshot: Snapshot | null
   setSnapshot: (s: Snapshot | null) => void
-  simOptions: Required<Pick<SimOptions, 'years' | 'paths' | 'rebalFreq' | 'inflation'>> & { mcMode: NonNullable<SimOptions['mcMode']> } & {
+  simOptions: Required<Pick<SimOptions, 'years' | 'paths' | 'rebalFreq' | 'inflation'>> & {
     bootstrapBlockMonths: number
     bootstrapNoiseSigma: number
     maxWorkers: number
@@ -18,8 +18,8 @@ const Ctx = createContext<AppState | undefined>(undefined)
 export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
   const defaultWorkers = Math.max(1, Math.min((typeof navigator !== 'undefined' ? (navigator.hardwareConcurrency || 4) : 4), 8))
-  const [simOptionsState, setSimOptionsState] = useState<Required<Pick<SimOptions, 'years' | 'paths' | 'rebalFreq' | 'inflation'>> & { mcMode: NonNullable<SimOptions['mcMode']> } & { bootstrapBlockMonths: number; bootstrapNoiseSigma: number; maxWorkers: number }>(
-    { years: 40, paths: 1000, rebalFreq: 'annual', inflation: 0.02, mcMode: 'bootstrap', bootstrapBlockMonths: 24, bootstrapNoiseSigma: 0.005, maxWorkers: defaultWorkers }
+  const [simOptionsState, setSimOptionsState] = useState<Required<Pick<SimOptions, 'years' | 'paths' | 'rebalFreq' | 'inflation'>> & { bootstrapBlockMonths: number; bootstrapNoiseSigma: number; maxWorkers: number }>(
+    { years: 40, paths: 1000, rebalFreq: 'annual', inflation: 0.02, bootstrapBlockMonths: 24, bootstrapNoiseSigma: 0.005, maxWorkers: defaultWorkers }
   )
 
   const ctxVal = useMemo(() => ({
@@ -31,7 +31,6 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
       paths: s.paths ?? prev.paths,
       rebalFreq: s.rebalFreq ?? prev.rebalFreq,
       inflation: s.inflation ?? prev.inflation,
-      mcMode: (s.mcMode as any) ?? prev.mcMode,
       bootstrapBlockMonths: s.bootstrapBlockMonths ?? prev.bootstrapBlockMonths,
       bootstrapNoiseSigma: s.bootstrapNoiseSigma ?? prev.bootstrapNoiseSigma,
       maxWorkers: s.maxWorkers ?? prev.maxWorkers
@@ -48,5 +47,5 @@ export function useApp(): AppState {
 }
 /*
 Global app context: holds current snapshot and simulation options.
-- simOptions now includes mcMode to control Monte Carlo engine.
+- simOptions carries bootstrap controls and worker limits used by Monte Carlo runs.
 */

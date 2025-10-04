@@ -5,7 +5,7 @@ Firedash is a private, web-based dashboard for planning Financial Independence /
 ## Highlights
 - Snapshot-based, no live account linking; all data local by default
 - Monarch JSON importer with robust grouping (brokerage, crypto, other) and Holding name support
-- Deterministic and Monte Carlo simulations (Bootstrap, Regime, GBM)
+- Deterministic and Monte Carlo simulations (historical bootstrap)
 - Historical block bootstrap using long-run asset-class returns; in-app Historical Data upload with IndexedDB persistence and yearly performance charts + sanity stats
 - Real estate modeling with carrying costs and mortgage amortization; SS begins at claim age
 - Unified What‑Ifs (Sensitivity + Scenarios) with baseline vs variant and target success spend search
@@ -29,7 +29,7 @@ Open the Vite dev URL (typically http://localhost:5173).
 - Fetch live Monarch data with the optional Chrome extension (see `extension/README.md`).
 
 - Results
-  - Pick Monte Carlo mode (Bootstrap/Regime/GBM) in Scenario Options
+  - Adjust Monte Carlo bootstrap settings (block length, noise) in Scenario Options
   - Adjust Years, Paths, Rebalancing, Inflation, Max Workers; Bootstrap Block/Noise
   - MC runs in Web Workers with a pool and progressive percentile updates; cache persists results
 

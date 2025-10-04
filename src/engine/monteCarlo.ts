@@ -18,7 +18,6 @@ export function runMonteCarlo(snapshot: Snapshot, opts: MonteCarloOptions = {}):
     years,
     inflation: opts.inflation,
     rebalFreq: opts.rebalFreq,
-    mcMode: opts.mcMode || 'regime',
     bootstrapBlockMonths: opts.bootstrapBlockMonths,
     bootstrapNoiseSigma: opts.bootstrapNoiseSigma
   })
