@@ -26,6 +26,7 @@ Open the Vite dev URL (typically http://localhost:5173).
 - Upload or build a snapshot
   - Upload a JSON snapshot (see `examples/sample_snapshot.json`)
   - or go to Builder → paste Monarch investments JSON → Import → Load Into App
+- Fetch live Monarch data with the optional Chrome extension (see `extension/README.md`).
 
 - Results
   - Pick Monte Carlo mode (Bootstrap/Regime/GBM) in Scenario Options

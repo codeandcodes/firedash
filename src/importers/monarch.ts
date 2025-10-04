@@ -1,4 +1,4 @@
-import type { Account, HoldingLot } from '@types/schema'
+import type { Account, HoldingLot, Snapshot } from '@types/schema'
 
 type AnyObj = Record<string, any>
 
@@ -151,6 +151,25 @@ export function importMonarchInvestments(json: AnyObj): ImportResult {
   }
 
   return { accounts: Array.from(accountMap.values()), meta: { positions, accounts: accountMap.size, lastSyncedAt: latestSync } }
+}
+
+const DEFAULT_RETIREMENT = { expected_spend_monthly: 4000, target_age: 60, withdrawal_strategy: 'fixed-real' } as Snapshot['retirement']
+const DEFAULT_ASSUMPTIONS = { inflation_mode: 'fixed', inflation_pct: 0.02, rebalancing: { frequency: 'annual', threshold_pct: 0.2 } } as NonNullable<Snapshot['assumptions']>
+const DEFAULT_PERSON = { current_age: 35 } as NonNullable<Snapshot['person']>
+
+export function buildSnapshotFromImport(importResult: ImportResult, overrides?: Partial<Snapshot>): Snapshot {
+  return {
+    timestamp: overrides?.timestamp ?? new Date().toISOString(),
+    currency: overrides?.currency ?? 'USD',
+    accounts: importResult.accounts,
+    real_estate: overrides?.real_estate ?? [],
+    contributions: overrides?.contributions ?? [],
+    expenses: overrides?.expenses ?? [],
+    retirement: overrides?.retirement ?? { ...DEFAULT_RETIREMENT },
+    social_security: overrides?.social_security ?? [],
+    assumptions: overrides?.assumptions ?? { ...DEFAULT_ASSUMPTIONS },
+    person: overrides?.person ?? { ...DEFAULT_PERSON }
+  }
 }
 
 export function importMonarchFromString(raw: string): ImportResult {

@@ -261,7 +261,7 @@ export function WhatIfsPage() {
       const yearEnds = computeYearEnds(data.series, simOptions.years)
       const breakdown = {} as Record<QuantKey, YearlyBreakdownData[]>
       for (const k of Object.keys(yearEnds) as QuantKey[]) {
-        breakdown[k] = generateYearlyBreakdown(variantSnapshot, simOptions.years, scenario.inflation, yearEnds[k])
+        breakdown[k] = generateYearlyBreakdown(variantSnapshot, simOptions.years, scenario.inflation, yearEnds[k], baseline?.breakdown[k])
       }
       setScenarios((prev) => prev.map((s) => s.id === id ? {
         ...s,
