@@ -10,10 +10,6 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload'
 import QueryStatsIcon from '@mui/icons-material/QueryStats'
 import BuildIcon from '@mui/icons-material/Build'
 import PieChartOutlineIcon from '@mui/icons-material/PieChartOutline'
-import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet'
-import HomeWorkIcon from '@mui/icons-material/HomeWork'
-import ElderlyIcon from '@mui/icons-material/Elderly'
-import TuneIcon from '@mui/icons-material/Tune'
 import InsightsIcon from '@mui/icons-material/Insights'
 import AutoGraphIcon from '@mui/icons-material/AutoGraph'
 
@@ -23,10 +19,6 @@ const navItems = [
   { to: '/historical', label: 'Historical Data', icon: <QueryStatsIcon fontSize="small" /> },
   { to: '/builder', label: 'Builder', icon: <BuildIcon fontSize="small" /> },
   { to: '/snapshot', label: 'Snapshot', icon: <PieChartOutlineIcon fontSize="small" /> },
-  { to: '/contrib-expenses', label: 'Contrib & Expenses', icon: <AccountBalanceWalletIcon fontSize="small" /> },
-  { to: '/real-estate', label: 'Real Estate', icon: <HomeWorkIcon fontSize="small" /> },
-  { to: '/social-security', label: 'Social Security', icon: <ElderlyIcon fontSize="small" /> },
-  { to: '/assumptions', label: 'Assumptions', icon: <TuneIcon fontSize="small" /> },
   { to: '/results', label: 'Results', icon: <InsightsIcon fontSize="small" /> },
   { to: '/what-ifs', label: 'What‑Ifs', icon: <AutoGraphIcon fontSize="small" /> }
 ]
@@ -35,7 +27,7 @@ export const Layout: React.FC<React.PropsWithChildren> = ({ children }) => {
   const [mobileOpen, setMobileOpen] = React.useState(false)
   const { pathname } = useLocation()
   const theme = useTheme()
-  const { mode, toggle } = useThemeMode()
+  const { toggle } = useThemeMode()
 
   const drawer = (
     <div>
