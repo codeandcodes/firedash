@@ -109,6 +109,26 @@ const WEB_GET_PORTFOLIO_QUERY = `query Web_GetPortfolio($portfolioInput: Portfol
   }
 }`
 
+const WEB_GET_ACCOUNTS_QUERY = `query Web_GetAccountsPageRecentBalance($startDate: Date) {
+  accounts {
+    id
+    name
+    recentBalances(startDate: $startDate) {
+      balance
+      date
+      __typename
+    }
+    type {
+      name
+      display
+      group
+      __typename
+    }
+    includeInNetWorth
+    __typename
+  }
+}`
+
 interface DateRange {
   startDate: string
   endDate: string
@@ -240,12 +260,20 @@ async function handleFetchSnapshot(message: ExternalRequest): Promise<FetchSnaps
   const credentials = await ensureCredentials()
   const dateRange = resolveDateRange(message.portfolioInput)
   const payload = await fetchPortfolio(credentials, dateRange)
-  const importResult = importMonarchInvestments(payload)
+  const accountsPayload = await fetchAccounts(credentials, dateRange.startDate)
+  const importResult = importMonarchInvestments(payload, accountsPayload)
   const snapshot = buildSnapshotFromImport(importResult)
   const fetchedAt = new Date().toISOString()
-  await setStorage({ 'firedash:lastSnapshot': { fetchedAt, snapshot, meta: importResult.meta, raw: payload } })
+  await setStorage({
+    'firedash:lastSnapshot': {
+      fetchedAt,
+      snapshot,
+      meta: importResult.meta,
+      raw: { portfolio: payload, accounts: accountsPayload }
+    }
+  })
   console.log('[Firedash Extension] Snapshot ready', { fetchedAt, positions: importResult.meta.positions, accounts: importResult.meta.accounts })
-  return { ok: true, fetchedAt, snapshot, raw: payload, meta: importResult.meta }
+  return { ok: true, fetchedAt, snapshot, raw: { portfolio: payload, accounts: accountsPayload }, meta: importResult.meta }
 }
 
 function resolveDateRange(input?: { startDate?: string; endDate?: string }): DateRange {
@@ -403,6 +431,48 @@ async function fetchPortfolio(credentials: CredentialsPayload, range: DateRange)
     throw new Error('Monarch response did not contain aggregate holdings data')
   }
   return data
+}
+
+async function fetchAccounts(credentials: CredentialsPayload, startDate: string): Promise<unknown> {
+  console.log('[Firedash Extension] Fetching account balances', startDate)
+  const response = await fetch(GRAPHQL_ENDPOINT, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      accept: '*/*',
+      'accept-language': 'en-US,en;q=0.9',
+      authorization: `Token ${credentials.token}`,
+      'cache-control': 'no-cache',
+      'client-platform': 'web',
+      'content-type': 'application/json',
+      'device-uuid': credentials.deviceUuid,
+      pragma: 'no-cache'
+    },
+    body: JSON.stringify({
+      operationName: 'Web_GetAccountsPageRecentBalance',
+      variables: { startDate },
+      query: WEB_GET_ACCOUNTS_QUERY
+    })
+  })
+
+  if (!response.ok) {
+    const bodyText = await response.text()
+    if (response.status === 401 || response.status === 403) {
+      console.warn('[Firedash Extension] Accounts fetch auth failure', response.status)
+      cachedCredentials = null
+      throw new Error('Monarch authentication failed. Refresh the Monarch tab and try again.')
+    }
+    console.error('[Firedash Extension] Accounts request failed', response.status, bodyText)
+    throw new Error(`Monarch accounts request failed (${response.status}): ${bodyText || response.statusText}`)
+  }
+
+  const payload = await response.json()
+  if (payload?.errors?.length) {
+    const message = payload.errors.map((err: { message?: string }) => err?.message || 'Unknown error').join('; ')
+    console.error('[Firedash Extension] Accounts GraphQL error', message)
+    throw new Error(`Monarch returned GraphQL errors for accounts: ${message}`)
+  }
+  return payload
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

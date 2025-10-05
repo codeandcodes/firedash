@@ -186,7 +186,8 @@ export function BuilderPage() {
       setDraft((d) => ({
         ...d,
         timestamp: res.meta.lastSyncedAt || d.timestamp,
-        accounts: res.accounts
+        accounts: res.accounts,
+        real_estate: res.realEstate.length ? res.realEstate : d.real_estate
       }))
       setErrors([])
     } catch (e: any) {
