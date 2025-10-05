@@ -109,22 +109,73 @@ const WEB_GET_PORTFOLIO_QUERY = `query Web_GetPortfolio($portfolioInput: Portfol
   }
 }`
 
-const WEB_GET_ACCOUNTS_QUERY = `query Web_GetAccountsPageRecentBalance($startDate: Date) {
-  accounts {
-    id
-    name
-    recentBalances(startDate: $startDate) {
-      balance
-      date
-      __typename
-    }
+const WEB_GET_ACCOUNTS_QUERY = `query Web_GetAccountsPage($filters: AccountFilters) {
+  accountTypeSummaries(filters: $filters) {
     type {
       name
       display
       group
       __typename
     }
-    includeInNetWorth
+    accounts {
+      id
+      displayName
+      displayBalance
+      signedBalance
+      updatedAt
+      includeInNetWorth
+      includeBalanceInNetWorth
+      isAsset
+      isHidden
+      syncDisabled
+      order
+      mask
+      icon
+      logoUrl
+      limit
+      type {
+        name
+        display
+        __typename
+      }
+      subtype {
+        display
+        __typename
+      }
+      credential {
+        id
+        updateRequired
+        dataProvider
+        disconnectedFromDataProviderAt
+        syncDisabledAt
+        syncDisabledReason
+        __typename
+      }
+      institution {
+        id
+        name
+        status
+        url
+        __typename
+      }
+      connectionStatus {
+        connectionStatusCode
+        copyTitle
+        inAppSmallCopy
+        inAppCopy
+        helpCenterUrl
+        __typename
+      }
+      ownedByUser {
+        id
+        name
+        profilePictureUrl
+        __typename
+      }
+      __typename
+    }
+    isAsset
+    totalDisplayBalance
     __typename
   }
 }`
@@ -260,7 +311,11 @@ async function handleFetchSnapshot(message: ExternalRequest): Promise<FetchSnaps
   const credentials = await ensureCredentials()
   const dateRange = resolveDateRange(message.portfolioInput)
   const payload = await fetchPortfolio(credentials, dateRange)
-  const accountsPayload = await fetchAccounts(credentials, dateRange.startDate)
+  const accountsPayload = await fetchAccounts(credentials)
+  const accountGroups = Array.isArray((accountsPayload as any)?.data?.accountTypeSummaries)
+    ? (accountsPayload as any).data.accountTypeSummaries.length
+    : 0
+  console.log('[Firedash Extension] Accounts payload received', { accountGroups })
   const importResult = importMonarchInvestments(payload, accountsPayload)
   const snapshot = buildSnapshotFromImport(importResult)
   const fetchedAt = new Date().toISOString()
@@ -372,7 +427,6 @@ async function fetchPortfolio(credentials: CredentialsPayload, range: DateRange)
   })
   const headers = {
     accept: '*/*',
-    'accept-language': 'en-US,en;q=0.9',
     authorization: `Token ${credentials.token}`,
     'client-platform': 'web',
     'content-type': 'application/json',
@@ -433,44 +487,72 @@ async function fetchPortfolio(credentials: CredentialsPayload, range: DateRange)
   return data
 }
 
-async function fetchAccounts(credentials: CredentialsPayload, startDate: string): Promise<unknown> {
-  console.log('[Firedash Extension] Fetching account balances', startDate)
-  const response = await fetch(GRAPHQL_ENDPOINT, {
-    method: 'POST',
-    credentials: 'include',
-    headers: {
-      accept: '*/*',
-      'accept-language': 'en-US,en;q=0.9',
-      authorization: `Token ${credentials.token}`,
-      'cache-control': 'no-cache',
-      'client-platform': 'web',
-      'content-type': 'application/json',
-      'device-uuid': credentials.deviceUuid,
-      pragma: 'no-cache'
+async function fetchAccounts(credentials: CredentialsPayload): Promise<unknown> {
+  console.log('[Firedash Extension] Fetching account summaries via accounts page endpoint')
+  const tabId = lastMonarchTabId ?? (await locateMonarchTab())
+  await ensureContentScript(tabId)
+  const body = JSON.stringify({
+    operationName: 'Web_GetAccountsPage',
+    variables: { filters: {} },
+    query: WEB_GET_ACCOUNTS_QUERY
+  })
+  const headers = {
+    accept: '*/*',
+    authorization: `Token ${credentials.token}`,
+    'client-platform': 'web',
+    'content-type': 'application/json',
+    'device-uuid': credentials.deviceUuid
+  } as Record<string, string>
+
+  const [execution] = await chrome.scripting.executeScript({
+    target: { tabId },
+    func: async (endpoint: string, requestHeaders: Record<string, string>, requestBody: string): Promise<ScriptFetchResult> => {
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          credentials: 'include',
+          headers: requestHeaders,
+          body: requestBody
+        })
+        const text = await response.text()
+        return { ok: response.ok, status: response.status, text }
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : String(err) }
+      }
     },
-    body: JSON.stringify({
-      operationName: 'Web_GetAccountsPageRecentBalance',
-      variables: { startDate },
-      query: WEB_GET_ACCOUNTS_QUERY
-    })
+    args: [GRAPHQL_ENDPOINT, headers, body]
   })
 
-  if (!response.ok) {
-    const bodyText = await response.text()
-    if (response.status === 401 || response.status === 403) {
-      console.warn('[Firedash Extension] Accounts fetch auth failure', response.status)
+  const result = execution?.result as ScriptFetchResult | undefined
+  if (!result) {
+    throw new Error('No response from injected accounts fetch')
+  }
+  if (!result.ok) {
+    if (result.status === 401 || result.status === 403) {
+      console.warn('[Firedash Extension] Accounts fetch auth failure', result.status)
       cachedCredentials = null
       throw new Error('Monarch authentication failed. Refresh the Monarch tab and try again.')
     }
-    console.error('[Firedash Extension] Accounts request failed', response.status, bodyText)
-    throw new Error(`Monarch accounts request failed (${response.status}): ${bodyText || response.statusText}`)
+    console.error('[Firedash Extension] Accounts request failed', result.status, result.error || result.text)
+    throw new Error(`Monarch accounts request failed (${result.status ?? 'unknown'}): ${result.error || result.text || 'Unknown error'}`)
   }
 
-  const payload = await response.json()
-  if (payload?.errors?.length) {
-    const message = payload.errors.map((err: { message?: string }) => err?.message || 'Unknown error').join('; ')
+  let payload: unknown
+  try {
+    payload = result.text ? JSON.parse(result.text) : undefined
+  } catch (err) {
+    console.error('[Firedash Extension] Failed to parse accounts response', err, result.text)
+    throw new Error('Failed to parse Monarch accounts response JSON')
+  }
+
+  const data = payload as any
+  if (data?.errors?.length) {
+    const message = data.errors.map((err: { message?: string }) => err?.message || 'Unknown error').join('; ')
     console.error('[Firedash Extension] Accounts GraphQL error', message)
     throw new Error(`Monarch returned GraphQL errors for accounts: ${message}`)
+  }
+  if (!data?.data?.accountTypeSummaries) {
+    throw new Error('Monarch response did not contain account summaries')
   }
   return payload
 }
