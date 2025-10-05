@@ -1,4 +1,4 @@
-import type { Account, HoldingLot, Snapshot } from '@types/schema'
+import type { Account, HoldingLot, Snapshot, RealEstate } from '@types/schema'
 
 type AnyObj = Record<string, any>
 
@@ -21,6 +21,7 @@ function safeNumber(n: any): number | undefined {
 
 export interface ImportResult {
   accounts: Account[]
+  realEstate: RealEstate[]
   meta: { positions: number; accounts: number; lastSyncedAt?: string }
 }
 
@@ -47,7 +48,255 @@ export function parseMonarchSnippet(raw: string): AnyObj {
   throw new Error('Unrecognized or invalid JSON snippet')
 }
 
-export function importMonarchInvestments(json: AnyObj): ImportResult {
+type MonarchAccountMetadata = {
+  mask?: string
+  subtype?: string
+  icon?: string
+  logoUrl?: string
+  credential?: {
+    id?: string
+    updateRequired?: boolean
+    dataProvider?: string | null
+    disconnectedFromDataProviderAt?: string | null
+    syncDisabledAt?: string | null
+    syncDisabledReason?: string | null
+  }
+  institution?: {
+    id?: string
+    name?: string
+    status?: string | null
+    plaidStatus?: AnyObj | null
+    newConnectionsDisabled?: boolean
+    hasIssuesReported?: boolean
+    hasIssuesReportedMessage?: string | null
+    url?: string | null
+    transactionsStatus?: string | null
+    balanceStatus?: string | null
+    logoUrl?: string | null
+  }
+  ownedByUser?: {
+    id?: string
+    name?: string
+    profilePictureUrl?: string | null
+  }
+  limit?: number
+  includeBalanceInNetWorth?: boolean
+  isAsset?: boolean
+  isHidden?: boolean
+  syncDisabled?: boolean
+  connectionStatus?: {
+    connectionStatusCode?: string
+    copyTitle?: string
+    inAppSmallCopy?: string
+    inAppCopy?: string
+    helpCenterUrl?: string
+  } | null
+}
+
+type MonarchAccountBalance = {
+  id: string
+  name?: string
+  typeName?: string
+  typeDisplay?: string
+  typeGroup?: string
+  balance: number
+  asOf?: string
+  includeInNetWorth: boolean
+  metadata?: MonarchAccountMetadata
+}
+
+const DEFAULT_APPRECIATION = 0.035
+
+function normalizeLabel(value?: string | null): string | null {
+  if (!value) return null
+  const cleaned = value.toLowerCase().replace(/[^a-z0-9]/g, '')
+  return cleaned || null
+}
+
+function extractAccountMetadata(entry: AnyObj | undefined): MonarchAccountMetadata | undefined {
+  if (!entry || typeof entry !== 'object') return undefined
+  const metadata: MonarchAccountMetadata = {}
+
+  if (typeof entry.mask === 'string') metadata.mask = entry.mask
+  const subtypeName = entry?.subtype?.display || entry?.subtype?.name
+  if (typeof subtypeName === 'string') metadata.subtype = subtypeName
+  if (typeof entry.icon === 'string') metadata.icon = entry.icon
+  const logo = entry.logoUrl || entry?.institution?.logo
+  if (typeof logo === 'string') metadata.logoUrl = logo
+
+  if (entry.credential && typeof entry.credential === 'object') {
+    metadata.credential = {
+      id: typeof entry.credential.id === 'string' ? entry.credential.id : undefined,
+      updateRequired: entry.credential.updateRequired === true,
+      dataProvider: typeof entry.credential.dataProvider === 'string' ? entry.credential.dataProvider : entry.credential.dataProvider ?? null,
+      disconnectedFromDataProviderAt:
+        typeof entry.credential.disconnectedFromDataProviderAt === 'string'
+          ? entry.credential.disconnectedFromDataProviderAt
+          : null,
+      syncDisabledAt:
+        typeof entry.credential.syncDisabledAt === 'string' ? entry.credential.syncDisabledAt : null,
+      syncDisabledReason:
+        typeof entry.credential.syncDisabledReason === 'string' ? entry.credential.syncDisabledReason : null,
+    }
+  }
+
+  const institution = entry?.institution || entry?.credential?.institution
+  if (institution && typeof institution === 'object') {
+    metadata.institution = {
+      id: typeof institution.id === 'string' ? institution.id : undefined,
+      name: typeof institution.name === 'string' ? institution.name : undefined,
+      status: typeof institution.status === 'string' || institution.status === null ? institution.status : undefined,
+      plaidStatus: institution.plaidStatus ?? null,
+      newConnectionsDisabled: institution.newConnectionsDisabled === true,
+      hasIssuesReported: institution.hasIssuesReported === true,
+      hasIssuesReportedMessage:
+        typeof institution.hasIssuesReportedMessage === 'string'
+          ? institution.hasIssuesReportedMessage
+          : null,
+      url: typeof institution.url === 'string' ? institution.url : null,
+      transactionsStatus:
+        typeof institution.transactionsStatus === 'string' ? institution.transactionsStatus : null,
+      balanceStatus: typeof institution.balanceStatus === 'string' ? institution.balanceStatus : null,
+      logoUrl: typeof institution.logo === 'string' ? institution.logo : undefined,
+    }
+  }
+
+  if (entry.ownedByUser && typeof entry.ownedByUser === 'object') {
+    metadata.ownedByUser = {
+      id: typeof entry.ownedByUser.id === 'string' ? entry.ownedByUser.id : undefined,
+      name: typeof entry.ownedByUser.name === 'string' ? entry.ownedByUser.name : undefined,
+      profilePictureUrl:
+        typeof entry.ownedByUser.profilePictureUrl === 'string' ? entry.ownedByUser.profilePictureUrl : null,
+    }
+  }
+
+  const limit = safeNumber(entry.limit)
+  if (typeof limit === 'number') metadata.limit = limit
+
+  metadata.includeBalanceInNetWorth = entry?.includeBalanceInNetWorth !== false
+  metadata.isAsset = entry?.isAsset === true
+  metadata.isHidden = entry?.isHidden === true
+  metadata.syncDisabled = entry?.syncDisabled === true
+
+  if (entry.connectionStatus && typeof entry.connectionStatus === 'object') {
+    metadata.connectionStatus = {
+      connectionStatusCode:
+        typeof entry.connectionStatus.connectionStatusCode === 'string'
+          ? entry.connectionStatus.connectionStatusCode
+          : undefined,
+      copyTitle:
+        typeof entry.connectionStatus.copyTitle === 'string' ? entry.connectionStatus.copyTitle : undefined,
+      inAppSmallCopy:
+        typeof entry.connectionStatus.inAppSmallCopy === 'string'
+          ? entry.connectionStatus.inAppSmallCopy
+          : undefined,
+      inAppCopy:
+        typeof entry.connectionStatus.inAppCopy === 'string'
+          ? entry.connectionStatus.inAppCopy
+          : undefined,
+      helpCenterUrl:
+        typeof entry.connectionStatus.helpCenterUrl === 'string'
+          ? entry.connectionStatus.helpCenterUrl
+          : undefined,
+    }
+  } else if (entry.connectionStatus === null) {
+    metadata.connectionStatus = null
+  }
+
+  return Object.keys(metadata).length ? metadata : undefined
+}
+
+function extractAccountsPayload(raw: AnyObj | undefined): MonarchAccountBalance[] {
+  const summaries = raw?.data?.accountTypeSummaries ?? raw?.accountTypeSummaries
+  const result: MonarchAccountBalance[] = []
+
+  if (Array.isArray(summaries)) {
+    for (const summary of summaries) {
+      const typeName = typeof summary?.type?.name === 'string' ? summary.type.name : undefined
+      if (typeName && typeName.toLowerCase() === 'brokerage') continue
+
+      const accounts = Array.isArray(summary?.accounts) ? summary.accounts : []
+      for (const entry of accounts) {
+        const id = typeof entry?.id === 'string' ? entry.id : undefined
+        if (!id) continue
+        const balance =
+          safeNumber(entry?.displayBalance) ?? safeNumber(entry?.signedBalance) ?? safeNumber(entry?.balance) ?? 0
+        const asOf = typeof entry?.updatedAt === 'string' ? entry.updatedAt : undefined
+        const metadata = extractAccountMetadata(entry)
+        result.push({
+          id,
+          name: typeof entry?.displayName === 'string' ? entry.displayName : undefined,
+          typeName,
+          typeDisplay: typeof summary?.type?.display === 'string' ? summary.type.display : undefined,
+          typeGroup: typeof summary?.type?.group === 'string' ? summary.type.group : undefined,
+          balance,
+          asOf,
+          includeInNetWorth: entry?.includeBalanceInNetWorth !== false && entry?.includeInNetWorth !== false,
+          metadata
+        })
+      }
+    }
+    return result
+  }
+
+  const list = raw?.data?.accounts ?? raw?.accounts
+  if (!Array.isArray(list)) return []
+  for (const entry of list) {
+    const id = typeof entry?.id === 'string' ? entry.id : undefined
+    if (!id) continue
+    const balances = Array.isArray(entry?.recentBalances) ? entry.recentBalances : []
+    let latestBalance: number | undefined
+    let latestDate: string | undefined
+    for (const bal of balances) {
+      if (typeof bal === 'number') {
+        latestBalance = bal
+        continue
+      }
+      const value = safeNumber(bal?.balance)
+      if (value == null) continue
+      const dateStr = typeof bal?.date === 'string' ? bal.date : undefined
+      if (!latestDate || (dateStr && new Date(dateStr) > new Date(latestDate))) {
+        latestBalance = value
+        latestDate = dateStr
+      }
+    }
+    if (latestBalance == null) latestBalance = 0
+    result.push({
+      id,
+      name: typeof entry?.name === 'string' ? entry.name : undefined,
+      typeName: typeof entry?.type?.name === 'string' ? entry.type.name : undefined,
+      typeDisplay: typeof entry?.type?.display === 'string' ? entry.type.display : undefined,
+      typeGroup: typeof entry?.type?.group === 'string' ? entry.type.group : undefined,
+      balance: latestBalance,
+      asOf: latestDate,
+      includeInNetWorth: entry?.includeInNetWorth !== false
+    })
+  }
+  return result
+}
+
+type BalanceCategory = 'cash' | 'real-estate' | 'loan' | 'investment' | null
+
+function resolveAccountCategory(acc: MonarchAccountBalance): BalanceCategory {
+  const tokens = [acc.typeName, acc.typeDisplay, acc.typeGroup, acc.name]
+    .map((v) => (typeof v === 'string' ? v.toLowerCase().replace(/_/g, ' ') : ''))
+    .filter(Boolean)
+  const text = tokens.join(' ')
+  if (!text && typeof acc.typeName === 'string') {
+    const raw = acc.typeName.toLowerCase()
+    if (raw === 'real_estate') return 'real-estate'
+    if (raw === 'loan') return 'loan'
+    if (raw === 'depository') return 'cash'
+    if (raw === 'brokerage' || raw === 'investment') return 'investment'
+  }
+  if (text.includes('real estate')) return 'real-estate'
+  if (text.includes('loan') || text.includes('mortgage') || text.includes('liability') || text.includes('credit')) return 'loan'
+  if (text.includes('depository') || text.includes('cash') || text.includes('bank') || text.includes('checking') || text.includes('savings')) return 'cash'
+  if (text.includes('investment') || text.includes('brokerage') || text.includes('retirement')) return 'investment'
+  return null
+}
+
+export function importMonarchInvestments(json: AnyObj, accountsPayload?: AnyObj): ImportResult {
   // Accept a variety of GraphQL-like shapes
   let edges: any[] | undefined =
     json?.data?.portfolio?.aggregateHoldings?.edges ??
@@ -60,13 +309,19 @@ export function importMonarchInvestments(json: AnyObj): ImportResult {
     edges = json
   }
 
-  if (!edges || !Array.isArray(edges)) {
-    throw new Error('Could not find aggregate holdings edges in pasted JSON')
-  }
+  if (!Array.isArray(edges)) edges = []
 
   const accountMap = new Map<string, Account>()
   let positions = 0
   let latestSync: string | undefined
+  const updateLatest = (ts?: string) => {
+    if (!ts) return
+    const date = new Date(ts)
+    if (!Number.isFinite(date.valueOf())) return
+    if (!latestSync || date > new Date(latestSync)) {
+      latestSync = date.toISOString()
+    }
+  }
 
   for (const e of edges) {
     const node = e?.node ?? e
@@ -115,7 +370,14 @@ export function importMonarchInvestments(json: AnyObj): ImportResult {
       }
 
       if (!accountMap.has(accountId)) {
-        accountMap.set(accountId, { id: accountId, type: accType, name: accName, holdings: [], cash_balance: 0 })
+        accountMap.set(accountId, {
+          id: accountId,
+          type: accType,
+          name: accName,
+          holdings: [],
+          cash_balance: 0,
+          metadata: undefined
+        })
       }
 
       // Position values and proportional basis
@@ -145,12 +407,135 @@ export function importMonarchInvestments(json: AnyObj): ImportResult {
     }
 
     const sync = node.lastSyncedAt || security?.currentPriceUpdatedAt || holdingsArr[0]?.closingPriceUpdatedAt
-    if (typeof sync === 'string') {
-      if (!latestSync || new Date(sync) > new Date(latestSync)) latestSync = sync
+    if (typeof sync === 'string') updateLatest(sync)
+  }
+
+  const balances = extractAccountsPayload(accountsPayload)
+  const usedPropertyIds = new Set<string>()
+  const ensurePropertyId = (base: string): string => {
+    const normalized = base.replace(/\s+/g, ' ').trim() || 'Property'
+    let candidate = normalized
+    let counter = 2
+    while (usedPropertyIds.has(candidate)) {
+      candidate = `${normalized} (${counter})`
+      counter += 1
+    }
+    usedPropertyIds.add(candidate)
+    return candidate
+  }
+
+  const realEstateDrafts: Array<{ entity: RealEstate; accountId: string; normalizedName: string | null }> = []
+  const loanDrafts: Array<{ accountId: string; name?: string; normalizedName: string | null; balance: number; metadata?: MonarchAccountMetadata }> = []
+
+  const ensureAccountRecord = (
+    accId: string,
+    type: Account['type'],
+    name?: string,
+    metadata?: MonarchAccountMetadata
+  ) => {
+    if (!accountMap.has(accId)) {
+      accountMap.set(accId, {
+        id: accId,
+        type,
+        name: name || accId,
+        holdings: [],
+        cash_balance: 0,
+        metadata: metadata ? { ...metadata } : undefined
+      })
+    } else {
+      const existing = accountMap.get(accId)!
+      if (!existing.name && name) existing.name = name
+      if (existing.type === 'other' && type !== 'other') existing.type = type
+      if (metadata) {
+        existing.metadata = { ...(existing.metadata || {}), ...metadata }
+      }
+    }
+    return accountMap.get(accId)!
+  }
+
+  for (const acc of balances) {
+    if (!acc.includeInNetWorth) continue
+    updateLatest(acc.asOf)
+    const category = resolveAccountCategory(acc)
+    if (category === 'investment') {
+      continue
+    }
+    if (category === 'real-estate') {
+      const label = ensurePropertyId(acc.name || acc.id)
+      const entity: RealEstate = {
+        id: label,
+        value: Math.max(0, acc.balance || 0),
+        appreciation_pct: DEFAULT_APPRECIATION
+      }
+      realEstateDrafts.push({ entity, accountId: acc.id, normalizedName: normalizeLabel(acc.name) || normalizeLabel(label) })
+      continue
+    }
+    if (category === 'cash') {
+      const balance = acc.balance || 0
+      const record = ensureAccountRecord(acc.id, balance >= 0 ? 'cash' : 'other', acc.name, acc.metadata)
+      record.cash_balance = balance
+      continue
+    }
+    if (category === 'loan') {
+      loanDrafts.push({
+        accountId: acc.id,
+        name: acc.name,
+        normalizedName: normalizeLabel(acc.name) || normalizeLabel(acc.id),
+        balance: Math.abs(acc.balance || 0),
+        metadata: acc.metadata
+      })
+      continue
+    }
+
+    // Fallback: create an account entry using the reported balance.
+    const fallbackType = mapAccountType(acc.typeName, undefined, undefined)
+    const record = ensureAccountRecord(acc.id, fallbackType, acc.name, acc.metadata)
+    if (!record.holdings || record.holdings.length === 0) {
+      record.cash_balance = acc.balance || 0
     }
   }
 
-  return { accounts: Array.from(accountMap.values()), meta: { positions, accounts: accountMap.size, lastSyncedAt: latestSync } }
+  const unmatchedLoans: typeof loanDrafts = []
+  for (const loan of loanDrafts) {
+    const match = realEstateDrafts.find((re) =>
+      re.accountId === loan.accountId ||
+      (loan.normalizedName && re.normalizedName && (
+        loan.normalizedName === re.normalizedName ||
+        loan.normalizedName.includes(re.normalizedName) ||
+        re.normalizedName.includes(loan.normalizedName)
+      ))
+    )
+    if (match) {
+      match.entity.mortgage_balance = loan.balance
+    } else {
+      unmatchedLoans.push(loan)
+    }
+  }
+
+  for (const loan of unmatchedLoans) {
+    const target = accountMap.get(loan.accountId)
+    const liability = -Math.abs(loan.balance)
+    if (target) {
+      target.cash_balance = (target.cash_balance || 0) + liability
+      if (!target.name && loan.name) target.name = loan.name
+      if (loan.metadata) {
+        target.metadata = { ...(target.metadata || {}), ...loan.metadata }
+      }
+    } else {
+      accountMap.set(loan.accountId, {
+        id: loan.accountId,
+        type: 'other',
+        name: loan.name || loan.accountId,
+        holdings: [],
+        cash_balance: liability,
+        metadata: loan.metadata ? { ...loan.metadata } : undefined
+      })
+    }
+  }
+
+  const realEstate = realEstateDrafts.map((draft) => draft.entity)
+
+  return { accounts: Array.from(accountMap.values()), realEstate, meta: { positions, accounts: accountMap.size, lastSyncedAt: latestSync } }
 }
 
 const DEFAULT_RETIREMENT = { expected_spend_monthly: 4000, target_age: 60, withdrawal_strategy: 'fixed-real' } as Snapshot['retirement']
@@ -162,7 +547,7 @@ export function buildSnapshotFromImport(importResult: ImportResult, overrides?: 
     timestamp: overrides?.timestamp ?? new Date().toISOString(),
     currency: overrides?.currency ?? 'USD',
     accounts: importResult.accounts,
-    real_estate: overrides?.real_estate ?? [],
+    real_estate: overrides?.real_estate ?? importResult.realEstate ?? [],
     contributions: overrides?.contributions ?? [],
     expenses: overrides?.expenses ?? [],
     retirement: overrides?.retirement ?? { ...DEFAULT_RETIREMENT },
@@ -176,15 +561,16 @@ export function importMonarchFromString(raw: string): ImportResult {
   const obj = parseMonarchSnippet(raw)
   // If the parsed object itself is the aggregateHoldings value, wrap it
   let wrapped = obj
-  if (!wrapped.aggregateHoldings && (wrapped.edges || wrapped.__typename === 'AggregateHoldingConnection')) {
+  if (!wrapped?.aggregateHoldings && (wrapped?.edges || wrapped?.__typename === 'AggregateHoldingConnection')) {
     wrapped = { aggregateHoldings: wrapped }
   }
-  return importMonarchInvestments(wrapped)
+  return importMonarchInvestments(wrapped, obj)
 }
 /*
-Monarch investments importer (GraphQL aggregate holdings).
+Monarch investments importer (GraphQL aggregate holdings + accounts balances).
 - Groups positions by holding.account; institutionless → synthetic 'Other'.
 - Crypto under non-crypto → synthetic '(Crypto)' account to avoid mixing.
 - Price selection prefers fresher security.currentPrice over stale holding closingPrice.
 - Populates HoldingLot.name from holding/security when available.
+- Merges Monarch accounts payload to fill cash balances, real estate values, and mortgage liabilities.
 */

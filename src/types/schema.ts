@@ -28,6 +28,7 @@ export interface Account {
   name?: string
   holdings?: HoldingLot[]
   cash_balance?: number
+  metadata?: Record<string, unknown>
 }
 
 export interface RentalInfo {
