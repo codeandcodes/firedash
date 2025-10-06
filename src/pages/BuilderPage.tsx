@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useApp } from '@state/AppContext'
 import type { Snapshot, Account, HoldingLot, RealEstate, Contribution, Expense, SocialSecurity, Assumptions, MortgageInfo, RentalInfo } from '@types/schema'
 import { validateSnapshot } from '@types/schema'
@@ -12,15 +12,7 @@ import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline'
 import StopCircleOutlinedIcon from '@mui/icons-material/StopCircleOutlined'
-
-const SECTION_COLORS = {
-  retirement: '#673ab7',
-  accounts: '#1565c0',
-  realEstate: '#2e7d32',
-  contributions: '#ef6c00',
-  expenses: '#c62828',
-  social: '#6d4c41'
-} as const
+import { SECTION_COLORS } from '../utils/sectionColors'
 
 const currencyAdornment = <InputAdornment position="start">$</InputAdornment>
 
@@ -97,6 +89,7 @@ export function BuilderPage() {
   const [errors, setErrors] = useState<string[]>([])
   const { setSnapshot, snapshot } = useApp()
   const nav = useNavigate()
+  const location = useLocation()
   // Heavy JSON preview only when shown
   const [previewOpen, setPreviewOpen] = useState(false)
   const pretty = useMemo(() => JSON.stringify(draft, null, 2), [draft])
@@ -118,6 +111,22 @@ export function BuilderPage() {
   const contributionsRef = useRef<HTMLDivElement | null>(null)
   const expensesRef = useRef<HTMLDivElement | null>(null)
   const socialSecurityRef = useRef<HTMLDivElement | null>(null)
+  const scrolledAccountRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const accountId = params.get('account')
+    if (!accountId) return
+    if (scrolledAccountRef.current === accountId) return
+    if (!draft.accounts.some((acc) => acc.id === accountId)) return
+    setRecentAccountId(accountId)
+    setHoldingsOpen((state) => ({ ...state, [accountId]: true }))
+    setAccountDetailsOpen((state) => ({ ...state, [accountId]: true }))
+    if (accountsRef.current) {
+      accountsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+    scrolledAccountRef.current = accountId
+  }, [location.search, draft.accounts])
 
   useEffect(() => {
     if (recentAccountId) {
