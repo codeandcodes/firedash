@@ -32,9 +32,18 @@ export interface Account {
 }
 
 export interface RentalInfo {
+  id?: string
   rent: number
   vacancy_pct?: number
   expenses?: number
+}
+
+export interface MortgageInfo {
+  id: string
+  balance: number
+  rate?: number
+  payment?: number
+  zip?: string
 }
 
 export interface RealEstate {
@@ -47,6 +56,8 @@ export interface RealEstate {
   insurance?: number
   maintenance_pct?: number
   rental?: RentalInfo
+  mortgages?: MortgageInfo[]
+  rentals?: RentalInfo[]
   sale_plan?: { year: number; costs_pct?: number }
   zip?: string
   appreciation_pct?: number
@@ -60,6 +71,7 @@ export interface Contribution {
   frequency: Frequency
   start?: string
   end?: string
+  note?: string
 }
 
 export interface Expense {

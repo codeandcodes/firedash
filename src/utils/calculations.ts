@@ -52,21 +52,34 @@ export function generateYearlyBreakdown(
     const taxes = re.taxes || 0
     const ins = re.insurance || 0
     const maint = (re.maintenance_pct || 0) * (re.value || 0)
-    const rNet = re.rental ? ((re.rental.rent || 0) * (1 - (re.rental.vacancy_pct || 0)) - (re.rental.expenses || 0)) : 0
-    const P = Math.max(0, re.mortgage_balance || 0)
-    const pay = Math.max(0, re.payment || 0)
-    const r = Math.max(0, (re.rate || 0) / 12)
-    let mortgageMonths = 0
-    if (P > 0 && pay > 0) {
-      if (r > 0 && pay > P * r) mortgageMonths = Math.ceil(Math.log(pay / (pay - r * P)) / Math.log(1 + r))
-      else if (r === 0) mortgageMonths = Math.ceil(P / pay)
-      else mortgageMonths = months
-    }
+    const rentals = (re.rentals && re.rentals.length ? re.rentals : re.rental ? [re.rental] : [])
+    const mortgages = (re.mortgages && re.mortgages.length ? re.mortgages : (re.mortgage_balance || re.payment || re.rate) ? [{ balance: re.mortgage_balance || 0, payment: re.payment || 0, rate: re.rate, id: `${re.id}-legacy` }] : [])
+
+    const carryMonthly = taxes / 12 + ins / 12 + maint / 12
+    const rentalMonthly = rentals.reduce((sum, rental) => sum + ((rental.rent || 0) * (1 - (rental.vacancy_pct || 0)) - (rental.expenses || 0)), 0)
+
     for (let m = 0; m < months; m++) {
       const y = Math.floor(m / 12)
-      perYear[y].rentNet += rNet
-      perYear[y].reCarry += taxes / 12 + ins / 12 + maint / 12
-      if (m < mortgageMonths) perYear[y].mortgage += pay
+      perYear[y].rentNet += rentalMonthly
+      perYear[y].reCarry += carryMonthly
+    }
+
+    for (const mortgage of mortgages) {
+      const P = Math.max(0, mortgage.balance || 0)
+      const pay = Math.max(0, mortgage.payment || 0)
+      const r = Math.max(0, (mortgage.rate || 0) / 12)
+      if (P <= 0 || pay <= 0) continue
+      let mortgageMonths = months
+      if (r > 0 && pay > P * r) {
+        mortgageMonths = Math.ceil(Math.log(pay / (pay - r * P)) / Math.log(1 + r))
+      } else if (r === 0) {
+        mortgageMonths = Math.ceil(P / pay)
+      }
+      mortgageMonths = Math.min(mortgageMonths, months)
+      for (let m = 0; m < mortgageMonths; m++) {
+        const y = Math.floor(m / 12)
+        perYear[y].mortgage += pay
+      }
     }
   }
 
