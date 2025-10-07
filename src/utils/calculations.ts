@@ -8,6 +8,7 @@ const safe = (n: number | undefined | null) => (typeof n === 'number' && isFinit
 export interface YearlyBreakdownData {
   year: number
   startBalance: number
+  startBalanceByClass: Record<string, number>
   endBalance: number
   income: {
     total: number
@@ -128,6 +129,11 @@ export function generateYearlyBreakdown(
   const result: YearlyBreakdownData[] = []
   for (let y = 0; y < years; y++) {
     const startBalance = safe(startBal[y])
+    const startBalanceByClass = {} as Record<string, number>
+    for (const assetClass in weights) {
+        const w = weights[assetClass as AssetClass] || 0
+        startBalanceByClass[assetClass] = startBalance * w
+    }
     const endBalance = safe(endBal[y])
     const incomeTotal = safe(contrib[y]) + safe(ss[y]) + safe(perYear[y].rentNet)
     const expendituresTotal = safe(spend[y]) + safe(perYear[y].mortgage) + safe(perYear[y].reCarry) + safe(extraExp[y])
@@ -162,6 +168,7 @@ export function generateYearlyBreakdown(
     result.push({
       year: (snapshot.timestamp ? new Date(snapshot.timestamp).getFullYear() : new Date().getFullYear()) + y,
       startBalance,
+      startBalanceByClass,
       endBalance,
       income: {
         total: incomeTotal,

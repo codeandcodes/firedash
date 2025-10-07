@@ -13,6 +13,7 @@ export const YearlyBalanceSheet: React.FC<{
   comparisonBreakdown?: YearlyBreakdownData[]
 }> = ({ breakdown, aliveFrac, comparisonBreakdown }) => {
   const fmt = (n: number) => `$${Math.round(n).toLocaleString()}`
+  const returnColor = (n: number) => n > 0 ? '#166534' : n < 0 ? '#B91C1C' : '#000'
 
   function downloadCsv() {
     const header = ['Year','Start','Returns','Income','Expenditures','Net_Cashflow','Balance_Change','End','Contrib','SS','RentNet','Spend','Mortgage','RE_Costs','Extra','Ret_US','Ret_Intl','Ret_Bonds','Ret_RE','Alive_Frac']
@@ -86,6 +87,7 @@ export const YearlyBalanceSheet: React.FC<{
             <th>Income</th>
             <th>Expenditures</th>
             <th>Net Cashflow</th>
+            <th>Balance Change</th>
             <th>End</th>
             {comparisonBreakdown && (
               <>
@@ -137,14 +139,30 @@ export const YearlyBalanceSheet: React.FC<{
                     </div>
                   )}
                 </td>
-                <td style={{ verticalAlign: 'top' }}>{fmt(row.startBalance)}</td>
                 <td style={{ verticalAlign: 'top' }}>
-                  <div style={{ color: '#14532D' }}>{fmt(row.returns.total)}</div>
-                  <div style={{ color: '#166534', fontSize: 12 }}>
-                    <div>US {fmt(row.returns.byClass.US_STOCK || 0)}</div>
-                    <div>Intl {fmt(row.returns.byClass.INTL_STOCK || 0)}</div>
-                    <div>Bonds {fmt(row.returns.byClass.BONDS || 0)}</div>
-                    <div>RE {fmt(row.returns.byClass.REAL_ESTATE || 0)}</div>
+                  <div>{fmt(row.startBalance)}</div>
+                  <div style={{ color: '#000', fontSize: 12 }}>
+                    <div>US {fmt(row.startBalanceByClass.US_STOCK || 0)}</div>
+                    <div>Intl {fmt(row.startBalanceByClass.INTL_STOCK || 0)}</div>
+                    <div>Bonds {fmt(row.startBalanceByClass.BONDS || 0)}</div>
+                    <div>REIT {fmt(row.startBalanceByClass.REIT || 0)}</div>
+                    <div>Cash {fmt(row.startBalanceByClass.CASH || 0)}</div>
+                    <div>RE {fmt(row.startBalanceByClass.REAL_ESTATE || 0)}</div>
+                    <div>Crypto {fmt(row.startBalanceByClass.CRYPTO || 0)}</div>
+                    <div>Gold {fmt(row.startBalanceByClass.GOLD || 0)}</div>
+                  </div>
+                </td>
+                <td style={{ verticalAlign: 'top' }}>
+                  <div style={{ color: returnColor(row.returns.total) }}>{fmt(row.returns.total)}</div>
+                  <div style={{ fontSize: 12 }}>
+                    <div style={{ color: returnColor(row.returns.byClass.US_STOCK || 0) }}>US {fmt(row.returns.byClass.US_STOCK || 0)}</div>
+                    <div style={{ color: returnColor(row.returns.byClass.INTL_STOCK || 0) }}>Intl {fmt(row.returns.byClass.INTL_STOCK || 0)}</div>
+                    <div style={{ color: returnColor(row.returns.byClass.BONDS || 0) }}>Bonds {fmt(row.returns.byClass.BONDS || 0)}</div>
+                    <div style={{ color: returnColor(row.returns.byClass.REIT || 0) }}>REIT {fmt(row.returns.byClass.REIT || 0)}</div>
+                    <div style={{ color: returnColor(row.returns.byClass.CASH || 0) }}>Cash {fmt(row.returns.byClass.CASH || 0)}</div>
+                    <div style={{ color: returnColor(row.returns.byClass.REAL_ESTATE || 0) }}>RE {fmt(row.returns.byClass.REAL_ESTATE || 0)}</div>
+                    <div style={{ color: returnColor(row.returns.byClass.CRYPTO || 0) }}>Crypto {fmt(row.returns.byClass.CRYPTO || 0)}</div>
+                    <div style={{ color: returnColor(row.returns.byClass.GOLD || 0) }}>Gold {fmt(row.returns.byClass.GOLD || 0)}</div>
                   </div>
                 </td>
                 <td style={{ verticalAlign: 'top' }}>
