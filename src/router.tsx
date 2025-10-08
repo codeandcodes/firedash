@@ -7,6 +7,7 @@ import { ResultsPage } from '@pages/ResultsPage'
 import { HistoricalDataPage } from '@pages/HistoricalDataPage'
 import { AnalysisPage } from '@pages/AnalysisPage'
 
+
 export function AppRouter() {
   return (
     <Routes>
@@ -20,6 +21,7 @@ export function AppRouter() {
       <Route path="/sensitivity" element={<WhatIfsPage />} />
       <Route path="/what-ifs" element={<WhatIfsPage />} />
       <Route path="/analysis" element={<AnalysisPage />} />
+
     </Routes>
   )
 }

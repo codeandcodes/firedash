@@ -86,6 +86,7 @@ Snapshot Builder page.
 */
 export function BuilderPage() {
   const [draft, setDraft] = useState<Snapshot>({ ...emptySnapshot })
+  const [snapshotName, setSnapshotName] = useState('My Snapshot')
   const [errors, setErrors] = useState<string[]>([])
   const { setSnapshot, snapshot } = useApp()
   const nav = useNavigate()
@@ -409,11 +410,12 @@ export function BuilderPage() {
   function download() {
     const res = validateSnapshot(draft)
     if (!res.valid) { setErrors(res.errors || ['Invalid snapshot']); return }
-    const blob = new Blob([JSON.stringify(draft, null, 2)], { type: 'application/json' })
+    const namedDraft = { ...draft, name: snapshotName };
+    const blob = new Blob([JSON.stringify(namedDraft, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'snapshot.json'
+    a.download = `${snapshotName || 'snapshot'}.json`
     document.body.appendChild(a)
     a.click()
     a.remove()
@@ -476,6 +478,14 @@ export function BuilderPage() {
       <Stack direction="row" alignItems="center" sx={{ mb: 1 }}>
         <Typography variant="h4">Snapshot Builder</Typography>
         <Box sx={{ flexGrow: 1 }} />
+        <TextField
+          label="Snapshot Name"
+          variant="outlined"
+          size="small"
+          value={snapshotName}
+          onChange={(e) => setSnapshotName(e.target.value)}
+          sx={{ mr: 2 }}
+        />
         <IconButton size="small" aria-label="Snapshot builder options" onClick={(e) => setMenuAnchor(e.currentTarget)}>
           <SettingsOutlinedIcon fontSize="small" />
         </IconButton>

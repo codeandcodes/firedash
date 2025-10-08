@@ -4,7 +4,7 @@
  * - Users can tweak key levers (inflation, spend, retirement age, extra income, Social Security) and rerun simulations.
  * - Charts reuse baseline components with optional overlays for the active scenario.
  */
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useApp } from '@state/AppContext'
 import type { Snapshot } from '@types/schema'
 import type { MonteSummary, SimOptions } from '@types/engine'
@@ -88,6 +88,7 @@ function buildScenarioSnapshot(base: Snapshot, scenario: ScenarioState): Snapsho
 }
 
 export function WhatIfsPage() {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const { snapshot, simOptions } = useApp()
   const [baseSeed] = useState(() => Math.floor(Math.random() * 1_000_000_000))
   const [baseline, setBaseline] = useState<SeriesBundle | null>(null)
@@ -127,17 +128,6 @@ export function WhatIfsPage() {
       bootstrapBlockMonths: simOptions.bootstrapBlockMonths,
       bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma
     }
-    // const key = resultsKey(snapshot, opts)
-    // const cached = loadCache<{ series: SeriesBundle['series']; summary: MonteSummary }>(key)
-    // if (cached?.series?.mc?.p50) {
-    //   const yearEnds = computeYearEnds(cached.series, simOptions.years)
-    //   const breakdown = {} as Record<QuantKey, YearlyBreakdownData[]>
-    //   for (const k of Object.keys(yearEnds) as QuantKey[]) {
-    //     breakdown[k] = generateYearlyBreakdown(snapshot, simOptions.years, simOptions.inflation, yearEnds[k])
-    //   }
-    //   setBaseline({ summary: cached.summary, series: cached.series, yearEnds, breakdown })
-    //   return
-    // }
     setBaselineLoading(true)
     const worker = new Worker(new URL('../workers/simWorker.ts', import.meta.url), { type: 'module' })
     worker.onmessage = (e: MessageEvent<any>) => {
@@ -148,7 +138,6 @@ export function WhatIfsPage() {
         console.error('Failed to compute baseline scenario', data?.error)
         return
       }
-      // try { saveCache(key, { series: data.series, summary: data.summary }) } catch {}
       const yearEnds = computeYearEnds(data.series, simOptions.years)
       const breakdown = {} as Record<QuantKey, YearlyBreakdownData[]>
       for (const k of Object.keys(yearEnds) as QuantKey[]) {
@@ -210,83 +199,131 @@ export function WhatIfsPage() {
     setActiveScenarioId((cur) => (cur === id ? null : cur))
   }
 
-  function runScenario(id: string) {
-    if (!snapshot) return
-    const scenario = scenarios.find((s) => s.id === id)
-    if (!scenario) return
-    const variantSnapshot = buildScenarioSnapshot(snapshot, scenario)
+  function runScenario(scenario: ScenarioState) {
+    if (!snapshot) return;
+    console.log('Running scenario:', scenario);
+    const variantSnapshot =
+      scenario.variantSnapshot || buildScenarioSnapshot(snapshot, scenario);
+    console.log('Using variant snapshot:', variantSnapshot);
     const opts: SimOptions = {
       years: simOptions.years,
       inflation: scenario.inflation,
       rebalFreq: simOptions.rebalFreq,
       paths: simOptions.paths,
       bootstrapBlockMonths: simOptions.bootstrapBlockMonths,
-      bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma
-    }
-    // const key = resultsKey(variantSnapshot, opts)
-    // const cached = loadCache<{ series: SeriesBundle['series']; summary: MonteSummary }>(key)
-    // if (cached?.series?.mc?.p50) {
-    //   const yearEnds = computeYearEnds(cached.series, simOptions.years)
-    //   const breakdown = {} as Record<QuantKey, YearlyBreakdownData[]>
-    //   for (const k of Object.keys(yearEnds) as QuantKey[]) {
-    //     breakdown[k] = generateYearlyBreakdown(variantSnapshot, simOptions.years, scenario.inflation, yearEnds[k])
-    //   }
-    //   setScenarios((prev) => prev.map((s) => s.id === id ? {
-    //     ...s,
-    //     status: 'ready',
-    //     summary: cached.summary,
-    //     series: cached.series,
-    //     yearEnds,
-    //     breakdown,
-    //     variantSnapshot
-    //   } : s))
-    //   setActiveScenarioId(id)
-    //   return
-    // }
+      bootstrapNoiseSigma: simOptions.bootstrapNoiseSigma,
+    };
 
-    setScenarios((prev) => prev.map((s) => s.id === id ? { ...s, status: 'running', error: undefined, breakdown: undefined } : s))
-    setActiveScenarioId(id)
+    setScenarios((prev) =>
+      prev.map((s) =>
+        s.id === scenario.id
+          ? { ...s, status: "running", error: undefined, breakdown: undefined, variantSnapshot: variantSnapshot }
+          : s
+      )
+    );
+    setActiveScenarioId(scenario.id);
 
-    const worker = new Worker(new URL('../workers/simWorker.ts', import.meta.url), { type: 'module' })
+    const worker = new Worker(
+      new URL("../workers/simWorker.ts", import.meta.url),
+      { type: "module" }
+    );
     worker.onmessage = (e: MessageEvent<any>) => {
-      const data = e.data
-      worker.terminate()
+      const data = e.data;
+      worker.terminate();
       if (!data || data.ok === false) {
-        setScenarios((prev) => prev.map((s) => s.id === id ? { ...s, status: 'error', error: data?.error || 'Simulation failed' } : s))
-        return
+        setScenarios((prev) =>
+          prev.map((s) =>
+            s.id === scenario.id
+              ? {
+                  ...s,
+                  status: "error",
+                  error: data?.error || "Simulation failed",
+                }
+              : s
+          )
+        );
+        return;
       }
-      // try { saveCache(key, { series: data.series, summary: data.summary }) } catch {}
-      const yearEnds = computeYearEnds(data.series, simOptions.years)
-      const breakdown = {} as Record<QuantKey, YearlyBreakdownData[]>
+      const yearEnds = computeYearEnds(data.series, simOptions.years);
+      const breakdown = {} as Record<QuantKey, YearlyBreakdownData[]>;
       for (const k of Object.keys(yearEnds) as QuantKey[]) {
-        breakdown[k] = generateYearlyBreakdown(variantSnapshot, simOptions.years, scenario.inflation, yearEnds[k], baseline?.breakdown[k])
+        breakdown[k] = generateYearlyBreakdown(
+          variantSnapshot,
+          simOptions.years,
+          scenario.inflation,
+          yearEnds[k],
+          baseline?.breakdown[k]
+        );
       }
-      setScenarios((prev) => prev.map((s) => s.id === id ? {
-        ...s,
-        status: 'ready',
-        summary: data.summary as MonteSummary,
-        series: data.series,
-        yearEnds,
-        breakdown,
-        variantSnapshot
-      } : s))
-    }
-    const maxForSeries = Math.min(simOptions.paths ?? 1000, 1000)
+      setScenarios((prev) =>
+        prev.map((s) =>
+          s.id === scenario.id
+            ? {
+                ...s,
+                status: "ready",
+                summary: data.summary as MonteSummary,
+                series: data.series,
+                yearEnds,
+                breakdown,
+                variantSnapshot,
+              }
+            : s
+        )
+      );
+    };
+    const maxForSeries = Math.min(simOptions.paths ?? 1000, 1000);
     worker.postMessage({
       snapshot: variantSnapshot,
       options: {
         ...opts,
         maxPathsForSeries: maxForSeries,
-        // ensure Monte Carlo uses the same path count as baseline unless paths is undefined
         paths: opts.paths,
-        seed: baseSeed
-      }
-    })
+        seed: baseSeed,
+      },
+    });
   }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const snapshot = JSON.parse(event.target?.result as string) as Snapshot;
+        console.log('Loaded snapshot:', snapshot);
+        const scenarioId = fileInputRef.current?.dataset.scenarioId;
+        if (scenarioId) {
+          const scenario = scenarios.find((s) => s.id === scenarioId);
+          if (scenario) {
+            const newScenario = {
+              ...scenario,
+              variantSnapshot: snapshot,
+              name: snapshot.name || 'Loaded Scenario',
+              spend: snapshot.retirement.expected_spend_monthly || 0,
+              retirementAge: snapshot.retirement.target_age,
+            };
+            updateScenario(scenarioId, newScenario, false);
+            runScenario(newScenario);
+          }
+        }
+      } catch (error) {
+        console.error("Error parsing snapshot file:", error);
+      }
+    };
+    reader.readAsText(file);
+  };
 
   return (
     <section>
       <h1>What-Ifs</h1>
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: "none" }}
+        onChange={handleFileChange}
+        accept=".json"
+      />
       {!snapshot && <p>No snapshot loaded.</p>}
       {snapshot && (
         <>
@@ -346,9 +383,30 @@ export function WhatIfsPage() {
                     <Grid item xs={12} md={2}>
                       <TextField type="number" label="Retirement age" fullWidth value={sc.retirementAge ?? ''} onChange={(e) => updateScenario(sc.id, { retirementAge: e.target.value === '' ? undefined : Number(e.target.value) })} />
                     </Grid>
+                    <Grid item xs={12} md={2}>
+                      <TextField type="number" label="Extra Income (mo)" fullWidth value={sc.extraIncomeMonthly ?? ''} onChange={(e) => updateScenario(sc.id, { extraIncomeMonthly: e.target.value === '' ? undefined : Number(e.target.value) })} />
+                    </Grid>
+                    <Grid item xs={12} md={2}>
+                      <TextField type="number" label="SS Claim Age" fullWidth value={sc.ssClaimAge ?? ''} onChange={(e) => updateScenario(sc.id, { ssClaimAge: e.target.value === '' ? undefined : Number(e.target.value) })} />
+                    </Grid>
+                    <Grid item xs={12} md={2}>
+                      <TextField type="number" label="SS Monthly" fullWidth value={sc.ssMonthly ?? ''} onChange={(e) => updateScenario(sc.id, { ssMonthly: e.target.value === '' ? undefined : Number(e.target.value) })} />
+                    </Grid>
                     <Grid item xs={12} md={3}>
                       <Stack direction="row" spacing={1} alignItems="center" justifyContent="flex-end">
-                        <Button variant="outlined" size="small" onClick={() => runScenario(sc.id)} disabled={sc.status === 'running'}>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={() => {
+                            if (fileInputRef.current) {
+                              fileInputRef.current.dataset.scenarioId = sc.id;
+                              fileInputRef.current.click();
+                            }
+                          }}
+                        >
+                          Load from File
+                        </Button>
+                        <Button variant="outlined" size="small" onClick={() => runScenario(sc)} disabled={sc.status === 'running'}>
                           {sc.status === 'ready' ? 'Re-run' : 'Run scenario'}
                         </Button>
                         <Button size="small" onClick={() => setActiveScenarioId(sc.id)} disabled={activeScenarioId === sc.id}>
@@ -359,15 +417,6 @@ export function WhatIfsPage() {
                         </IconButton>
                       </Stack>
                     </Grid>
-                    <Grid item xs={12} md={2}>
-                      <TextField type="number" label="Extra income (mo)" fullWidth value={sc.extraIncomeMonthly ?? 0} onChange={(e) => updateScenario(sc.id, { extraIncomeMonthly: Number(e.target.value) || 0 })} />
-                    </Grid>
-                    <Grid item xs={12} md={2}>
-                      <TextField type="number" label="SS claim age" fullWidth value={sc.ssClaimAge ?? ''} onChange={(e) => updateScenario(sc.id, { ssClaimAge: e.target.value === '' ? undefined : Number(e.target.value) })} />
-                    </Grid>
-                    <Grid item xs={12} md={2}>
-                      <TextField type="number" label="SS monthly" fullWidth value={sc.ssMonthly ?? ''} onChange={(e) => updateScenario(sc.id, { ssMonthly: e.target.value === '' ? undefined : Number(e.target.value) })} />
-                    </Grid>
                     <Grid item xs={12} md={6}>
                       {sc.status === 'running' && <Typography color="text.secondary">Running…</Typography>}
                       {sc.status === 'error' && <Typography color="error">{sc.error || 'Simulation failed'}</Typography>}
@@ -377,6 +426,18 @@ export function WhatIfsPage() {
                         </Typography>
                       )}
                     </Grid>
+                    {sc.variantSnapshot && (
+                      <Grid item xs={12}>
+                        <Typography variant="subtitle2">Contributions</Typography>
+                        <ul>
+                          {sc.variantSnapshot.contributions?.map((c, i) => (
+                            <li key={i}>
+                              {c.amount} {c.frequency} from {c.start} to {c.end}
+                            </li>
+                          ))}
+                        </ul>
+                      </Grid>
+                    )}
                   </Grid>
                 </CardContent>
               </Card>
@@ -395,7 +456,7 @@ export function WhatIfsPage() {
                 years={simOptions.years}
                 startYear={startYear}
                 retAt={retAt}
-                title="Baseline Percentiles"
+                title={`Baseline Percentiles${snapshot.name ? ` (${snapshot.name})` : ''}`}
                 highlight={quantile}
                 overlay={activeScenario?.series ? {
                   label: activeScenario.name,
@@ -424,9 +485,3 @@ export function WhatIfsPage() {
     </section>
   )
 }
-
-/*
-What-Ifs page – scenario manager with baseline comparison overlays.
-- Users create scenario cards, tweak limited parameters, and run simulations on demand.
-- Charts reuse baseline visuals with optional overlay data from the active scenario.
-*/
