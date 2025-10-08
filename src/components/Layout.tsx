@@ -12,6 +12,7 @@ import BuildIcon from '@mui/icons-material/Build'
 import PieChartOutlineIcon from '@mui/icons-material/PieChartOutline'
 import InsightsIcon from '@mui/icons-material/Insights'
 import AutoGraphIcon from '@mui/icons-material/AutoGraph'
+import ScienceIcon from '@mui/icons-material/Science';
 
 const drawerWidth = 240
 const navItems = [
@@ -20,7 +21,8 @@ const navItems = [
   { to: '/builder', label: 'Builder', icon: <BuildIcon fontSize="small" /> },
   { to: '/snapshot', label: 'Snapshot', icon: <PieChartOutlineIcon fontSize="small" /> },
   { to: '/results', label: 'Results', icon: <InsightsIcon fontSize="small" /> },
-  { to: '/what-ifs', label: 'What‑Ifs', icon: <AutoGraphIcon fontSize="small" /> }
+  { to: '/what-ifs', label: 'What‑Ifs', icon: <AutoGraphIcon fontSize="small" /> },
+  { to: '/analysis', label: 'Analysis', icon: <ScienceIcon fontSize="small" /> }
 ]
 
 export const Layout: React.FC<React.PropsWithChildren> = ({ children }) => {
