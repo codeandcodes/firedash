@@ -189,6 +189,16 @@ export const YearlyBalanceSheet: React.FC<{
                   <>
                     <td style={{ background: compRow.isRetired ? (compRow.isRetirementStart ? '#FFF7ED' : '#EFF6FF') : '#EFF6FF', verticalAlign: 'top' }}>
                       <div>{fmt(compRow.startBalance)}</div>
+                      <div style={{ color: '#000', fontSize: 12 }}>
+                        <div>US {fmt(compRow.startBalanceByClass.US_STOCK || 0)}</div>
+                        <div>Intl {fmt(compRow.startBalanceByClass.INTL_STOCK || 0)}</div>
+                        <div>Bonds {fmt(compRow.startBalanceByClass.BONDS || 0)}</div>
+                        <div>REIT {fmt(compRow.startBalanceByClass.REIT || 0)}</div>
+                        <div>Cash {fmt(compRow.startBalanceByClass.CASH || 0)}</div>
+                        <div>RE {fmt(compRow.startBalanceByClass.REAL_ESTATE || 0)}</div>
+                        <div>Crypto {fmt(compRow.startBalanceByClass.CRYPTO || 0)}</div>
+                        <div>Gold {fmt(compRow.startBalanceByClass.GOLD || 0)}</div>
+                      </div>
                       {compRow.isRetirementStart && (
                         <div style={{ marginTop: 4 }}>
                           <span style={{

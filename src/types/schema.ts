@@ -112,6 +112,7 @@ export interface Assumptions {
 }
 
 export interface Snapshot {
+  name?: string;
   timestamp: string
   currency: Currency
   accounts: Account[]
