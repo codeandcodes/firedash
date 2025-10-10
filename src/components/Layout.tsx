@@ -13,16 +13,17 @@ import PieChartOutlineIcon from '@mui/icons-material/PieChartOutline'
 import InsightsIcon from '@mui/icons-material/Insights'
 import AutoGraphIcon from '@mui/icons-material/AutoGraph'
 import ScienceIcon from '@mui/icons-material/Science';
+import { SECTION_COLORS } from '../utils/sectionColors';
 
 const drawerWidth = 240
 const navItems = [
-  { to: '/upload', label: 'Upload', icon: <CloudUploadIcon fontSize="small" /> },
-  { to: '/historical', label: 'Historical Data', icon: <QueryStatsIcon fontSize="small" /> },
-  { to: '/builder', label: 'Builder', icon: <BuildIcon fontSize="small" /> },
-  { to: '/snapshot', label: 'Snapshot', icon: <PieChartOutlineIcon fontSize="small" /> },
-  { to: '/results', label: 'Results', icon: <InsightsIcon fontSize="small" /> },
-  { to: '/what-ifs', label: 'What‑Ifs', icon: <AutoGraphIcon fontSize="small" /> },
-  { to: '/analysis', label: 'Analysis', icon: <ScienceIcon fontSize="small" /> }
+  { to: '/upload', label: 'Upload', icon: <CloudUploadIcon fontSize="small" />, color: SECTION_COLORS.accounts },
+  { to: '/historical', label: 'Historical Data', icon: <QueryStatsIcon fontSize="small" />, color: SECTION_COLORS.expenses },
+  { to: '/builder', label: 'Builder', icon: <BuildIcon fontSize="small" />, color: SECTION_COLORS.contributions },
+  { to: '/snapshot', label: 'Snapshot', icon: <PieChartOutlineIcon fontSize="small" />, color: SECTION_COLORS.realEstate },
+  { to: '/results', label: 'Results', icon: <InsightsIcon fontSize="small" />, color: SECTION_COLORS.retirement },
+  { to: '/what-ifs', label: 'What‑Ifs', icon: <AutoGraphIcon fontSize="small" />, color: SECTION_COLORS.social },
+  { to: '/analysis', label: 'Analysis', icon: <ScienceIcon fontSize="small" />, color: SECTION_COLORS.assumptions }
 ]
 
 export const Layout: React.FC<React.PropsWithChildren> = ({ children }) => {
@@ -39,7 +40,7 @@ export const Layout: React.FC<React.PropsWithChildren> = ({ children }) => {
         {navItems.map((item) => (
           <ListItem key={item.to} disablePadding>
             <ListItemButton component={Link} to={item.to} selected={pathname === item.to} onClick={() => setMobileOpen(false)}>
-              {item.icon && <ListItemIcon sx={{ minWidth: 32 }}>{item.icon}</ListItemIcon>}
+              {item.icon && <ListItemIcon sx={{ minWidth: 32, color: item.color }}>{item.icon}</ListItemIcon>}
               <ListItemText primary={item.label} />
             </ListItemButton>
           </ListItem>
@@ -51,12 +52,12 @@ export const Layout: React.FC<React.PropsWithChildren> = ({ children }) => {
   return (
     <Box sx={{ display: 'flex' }}>
       <CssBaseline />
-      <AppBar position="fixed" sx={{ zIndex: (t) => t.zIndex.drawer + 1 }}>
+      <AppBar position="fixed" sx={{ zIndex: (t) => t.zIndex.drawer + 1, background: 'linear-gradient(to right, rgba(0,0,0,0.1), rgba(0,0,0,0))', boxShadow: 'none' }}>
         <Toolbar>
           <IconButton color="inherit" edge="start" onClick={() => setMobileOpen(!mobileOpen)} sx={{ mr: 2, display: { sm: 'none' } }}>
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>Firedash</Typography>
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, color: '#fff' }}>🔥</Typography>
           <IconButton color="inherit" onClick={toggle}>
             {theme.palette.mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
           </IconButton>
