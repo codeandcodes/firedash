@@ -2,10 +2,12 @@ import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Box, Button, Card, CardContent, Chip, Grid, Stack, TextField, Typography, InputAdornment } from '@mui/material'
 import { useApp } from '@state/AppContext'
+import { useChat } from '@state/ChatContext'
 import type { Account, RealEstate, Snapshot } from '@types/schema'
 import { computeAllocation, classifyHolding } from '@engine/alloc'
 import { PieChart } from '@components/charts/PieChart'
 import { MultiLineChart } from '@components/charts/MultiLineChart'
+
 import { headingStyle, accentBorder, SECTION_COLORS, mutedChip } from '../utils/sectionColors'
 
 const ACCOUNT_COLORS = ['#7aa2f7','#91d7e3','#a6da95','#f5a97f','#eed49f','#c6a0f6','#8bd5ca','#f28fad','#f0c6c6','#b8c0e0']
@@ -344,7 +346,10 @@ interface AccountDetailCardProps {
   onEdit: (accountId: string) => void
 }
 
+import { ContextIcon } from '@components/ContextIcon';
+
 function AccountDetailCard({ account, onEdit }: AccountDetailCardProps) {
+  const { setContext } = useChat();
   const [active, setActive] = useState<string | null>(null)
   const holdings = useMemo(() => aggregateHoldings(account), [account])
   const total = holdings.reduce((sum, h) => sum + h.value, 0)
@@ -353,9 +358,9 @@ function AccountDetailCard({ account, onEdit }: AccountDetailCardProps) {
     <Card id={`acct-${account.id}`} sx={{ mt: 3, scrollMarginTop: '80px', ...accentBorder('accounts'), border: '1px solid rgba(148,163,184,0.15)' }}>
       <CardContent>
         <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 2 }}>
-          <Box>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>{accountDisplayName(account)}</Typography>
-            <Typography variant="body2" color="text.secondary">{fmtMoney0(total)}</Typography>
+            <ContextIcon onClick={() => setContext({ account })} />
           </Box>
           <Button size="small" variant="outlined" onClick={() => onEdit(account.id)}>Edit</Button>
         </Stack>
@@ -487,8 +492,22 @@ export function PortfolioSnapshotPage() {
     }
   })
 
+  const { setContext } = useChat();
+
+  const handleSelection = () => {
+    const selection = window.getSelection()?.toString();
+    if (selection) {
+      // This is a simplified way to find the context. A real implementation would
+      // need a more robust way to map the selected text to the snapshot data.
+      const account = snapshot?.accounts.find((a) => selection.includes(a.name || ''));
+      if (account) {
+        setContext({ account });
+      }
+    }
+  };
+
   return (
-    <section>
+    <section onMouseUp={handleSelection}>
       <Typography variant="h4" gutterBottom>Portfolio Snapshot</Typography>
       <Typography sx={{ mb: 2 }} color="text.secondary">Timestamp: <code>{snapshot.timestamp}</code></Typography>
 
@@ -547,7 +566,7 @@ export function PortfolioSnapshotPage() {
         ) : null}
       </Card>
 
-      <Card ref={accountsRef} elevation={0} sx={{ p: 3, mb: 4, ...accentBorder('accounts'), border: '1px solid rgba(148,163,184,0.15)' }}>
+      <Card ref={accountsRef} elevation={0} sx={{ p: 3, mb: 4, ...accentBorder('accounts'), border: '1px solid rgba(148,163,184,0.15)' }} onMouseUp={handleSelection}>
         <Typography variant="h6" sx={headingStyle('accounts')}>Accounts</Typography>
         <Grid container spacing={2} mt={1} mb={2}>
           <Grid item xs={12} sm={4}>

@@ -13,13 +13,13 @@
     "scripting"
   ],
   "host_permissions": [
-    "https://api.monarchmoney.com/*",
-    "https://app.monarchmoney.com/*"
+    "https://api.monarch.com/*",
+    "https://app.monarch.com/*"
   ],
   "content_scripts": [
     {
       "matches": [
-        "https://app.monarchmoney.com/*"
+        "https://app.monarch.com/*"
       ],
       "js": [
         "dist/content-script.js"

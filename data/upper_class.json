@@ -1,0 +1,108 @@
+{
+  "name": "Upper Class Example",
+  "timestamp": "2025-10-10T10:00:00.000Z",
+  "currency": "USD",
+  "accounts": [
+    {
+      "id": "checking-1",
+      "type": "cash",
+      "name": "Checking Account",
+      "cash_balance": 50000
+    },
+    {
+      "id": "savings-1",
+      "type": "cash",
+      "name": "High Yield Savings Account",
+      "cash_balance": 100000
+    },
+    {
+      "id": "brokerage-1",
+      "type": "taxable-brokerage",
+      "name": "Taxable Brokerage",
+      "holdings": [
+        {
+          "ticker": "SPY",
+          "name": "SPDR S&P 500 ETF Trust",
+          "units": 500,
+          "price": 450
+        },
+        {
+          "ticker": "AAPL",
+          "name": "Apple Inc.",
+          "units": 200,
+          "price": 175
+        }
+      ]
+    },
+    {
+      "id": "401k-1",
+      "type": "401k",
+      "name": "401(k)",
+      "holdings": [
+        {
+          "ticker": "VTI",
+          "name": "Vanguard Total Stock Market Index Fund ETF",
+          "units": 400,
+          "price": 250
+        }
+      ]
+    }
+  ],
+  "real_estate": [
+    {
+      "id": "primary-residence",
+      "value": 1500000,
+      "mortgage_balance": 750000
+    },
+    {
+      "id": "rental-property-1",
+      "value": 750000,
+      "mortgage_balance": 400000,
+      "rental": {
+        "rent": 4000,
+        "vacancy_pct": 0.05
+      }
+    }
+  ],
+  "contributions": [
+    {
+      "account_id": "401k-1",
+      "amount": 2000,
+      "frequency": "monthly"
+    },
+    {
+      "account_id": "brokerage-1",
+      "amount": 5000,
+      "frequency": "monthly"
+    }
+  ],
+  "expenses": [
+    {
+      "category": "Mortgage",
+      "amount": 5000,
+      "frequency": "monthly"
+    },
+    {
+      "category": "Groceries",
+      "amount": 1000,
+      "frequency": "monthly"
+    },
+    {
+      "category": "Utilities",
+      "amount": 500,
+      "frequency": "monthly"
+    },
+    {
+      "category": "Travel",
+      "amount": 2000,
+      "frequency": "monthly"
+    }
+  ],
+  "retirement": {
+    "expected_spend_monthly": 10000,
+    "target_age": 60
+  },
+  "person": {
+    "current_age": 50
+  }
+}

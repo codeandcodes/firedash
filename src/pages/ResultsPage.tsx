@@ -18,6 +18,8 @@ import { P2Quantile } from '@engine/quantile'
 import { LinearProgress, Box, ToggleButton, ToggleButtonGroup, Button, Collapse } from '@mui/material'
 import { resultsKey, saveCache, loadCache } from '@state/cache'
 import { generateYearlyBreakdown, YearlyBreakdownData } from '../utils/calculations'
+import { ContextIcon } from '@components/ContextIcon'
+import { useChat } from '@state/ChatContext'
 
 type QuantKey = 'p10' | 'p25' | 'p50' | 'p75' | 'p90'
 
@@ -267,6 +269,8 @@ export function ResultsPage() {
     return undefined
   }, [snapshot])
 
+  const { setContext } = useChat();
+
   return (
     <section>
       <h1>Results</h1>
@@ -295,15 +299,22 @@ export function ResultsPage() {
         </Box>
         {series && !loading && (
           <>
-            <h2>Portfolio Balance — Fan Chart</h2>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <h2>Portfolio Balance — Fan Chart</h2>
+              <ContextIcon onClick={() => setContext({ chart: 'fan', data: series.mc })} />
+            </Box>
             <FanChart p10={series.mc.p10} p25={series.mc.p25} p50={series.mc.p50} p75={series.mc.p75} p90={series.mc.p90} years={simOptions.years} startYear={startYear} retAt={retAt} title="Monte Carlo Percentiles" highlight={quantile} />
             {/* Percentile selector moved to top */}
-            <h2>Yearly Flows — Returns, Income, Expenditures</h2>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <h2>Yearly Flows — Returns, Income, Expenditures</h2>
+              <ContextIcon onClick={() => setContext({ chart: 'flows', data: breakdown && breakdown[quantile] })} />
+            </Box>
             {breakdown && (
               <YearlyFlowsChart
                 breakdown={breakdown[quantile]}
               />
             )}
+
             {breakdown && (
               <YearlyBalanceSheet
                 breakdown={breakdown[quantile]}

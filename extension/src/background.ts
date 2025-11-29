@@ -8,7 +8,7 @@ import {
   type PingResponse
 } from './messages'
 
-const GRAPHQL_ENDPOINT = 'https://api.monarchmoney.com/graphql'
+const GRAPHQL_ENDPOINT = 'https://api.monarch.com/graphql'
 
 console.log('[Firedash Extension] Service worker initialized');
 
@@ -399,7 +399,7 @@ async function requestCredentialsFromContentScript(): Promise<CredentialsPayload
 }
 
 async function locateMonarchTab(): Promise<number> {
-  const tabs = await queryTabs({ url: 'https://app.monarchmoney.com/*' })
+  const tabs = await queryTabs({ url: 'https://app.monarch.com/*' })
   const tab = tabs.find((t) => typeof t.id === 'number')
   if (!tab || typeof tab.id !== 'number') {
     throw new Error('Open Monarch Money in Chrome before requesting live data')

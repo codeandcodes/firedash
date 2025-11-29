@@ -1,0 +1,64 @@
+{
+  "name": "Lower Class Example",
+  "timestamp": "2025-10-10T10:00:00.000Z",
+  "currency": "USD",
+  "accounts": [
+    {
+      "id": "checking-1",
+      "type": "cash",
+      "name": "Checking Account",
+      "cash_balance": 2000
+    },
+    {
+      "id": "savings-1",
+      "type": "cash",
+      "name": "Savings Account",
+      "cash_balance": 5000
+    },
+    {
+      "id": "401k-1",
+      "type": "401k",
+      "name": "401(k)",
+      "holdings": [
+        {
+          "ticker": "VTI",
+          "name": "Vanguard Total Stock Market Index Fund ETF",
+          "units": 20,
+          "price": 250
+        }
+      ]
+    }
+  ],
+  "real_estate": [],
+  "contributions": [
+    {
+      "account_id": "401k-1",
+      "amount": 400,
+      "frequency": "monthly"
+    }
+  ],
+  "expenses": [
+    {
+      "category": "Rent",
+      "amount": 1500,
+      "frequency": "monthly"
+    },
+    {
+      "category": "Groceries",
+      "amount": 400,
+      "frequency": "monthly"
+    },
+    {
+      "category": "Utilities",
+      "amount": 200,
+      "frequency": "monthly"
+    }
+  ],
+  "retirement": {
+    "expected_spend_monthly": 2000,
+    "target_age": 67
+  },
+  "person": {
+    "current_age": 30
+  }
+}
