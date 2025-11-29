@@ -51,8 +51,9 @@ node scripts/parse_histret.mjs
 - Paste raw Monarch “Aggregate Holdings” JSON in Builder → Import Investments.
 - Grouping rules:
   - If `holding.account.institution` is missing → put in synthetic “Other” account.
-  - Crypto tickers under non‑crypto accounts → synthetic “(Crypto)” account.
+  - Crypto tickers under non-crypto accounts → synthetic “(Crypto)” account.
 - Price freshness: prefers `security.currentPrice` over stale holding `closingPrice` based on timestamps.
+- Chrome extension fetches now merge holdings + mortgages into the currently loaded snapshot, preserving contributions/expenses/social inputs so you can refresh balances without rebuilding the plan.
 
 ## Snapshot Schema (abridged)
 ```ts

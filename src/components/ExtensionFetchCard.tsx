@@ -2,7 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '@state/AppContext'
 import { validateSnapshot } from '@types/schema'
-import { Alert, Box, Button, Card, CardContent, Stack, TextField, Typography } from '@mui/material'
+import type { Snapshot } from '@types/schema'
+import { mergeMonarchImport } from '../utils/snapshotMerge'
+import { buildAccountDiffs, type AccountDiff, formatCurrency } from '../utils/accountDiff'
+import { Alert, Box, Button, Card, CardContent, Paper, Stack, TextField, Typography } from '@mui/material'
 
 const STORAGE_KEY = 'firedash.extensionId'
 const FETCH_MESSAGE_TYPE = 'FETCH_MONARCH_SNAPSHOT'
@@ -11,7 +14,7 @@ const PING_MESSAGE_TYPE = 'PING'
 type FetchResponse = {
   ok: boolean
   fetchedAt?: string
-  snapshot?: any
+  snapshot?: Snapshot
   error?: string
   meta?: { positions?: number; accounts?: number; lastSyncedAt?: string }
 }
@@ -23,7 +26,9 @@ export function ExtensionFetchCard() {
   const [status, setStatus] = useState<Status>('idle')
   const [message, setMessage] = useState('')
   const [meta, setMeta] = useState<FetchResponse['meta']>()
-  const { setSnapshot } = useApp() as any
+  const { setSnapshot, snapshot } = useApp() as any
+  const [pendingSnapshot, setPendingSnapshot] = useState<Snapshot | null>(null)
+  const [accountDiffs, setAccountDiffs] = useState<AccountDiff[]>([])
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -50,6 +55,8 @@ export function ExtensionFetchCard() {
     setStatus('loading')
     setMessage('Contacting Chrome extension...')
     setMeta(undefined)
+    setPendingSnapshot(null)
+    setAccountDiffs([])
     console.info('[Firedash] Initiating extension fetch', { extensionId })
 
     const ping = await sendMessage(extensionId, { type: PING_MESSAGE_TYPE })
@@ -70,6 +77,11 @@ export function ExtensionFetchCard() {
       return
     }
 
+    if (!response.snapshot) {
+      setStatus('error')
+      setMessage('Extension returned an empty snapshot payload.')
+      return
+    }
     const validation = validateSnapshot(response.snapshot)
     if (!validation.valid) {
       setStatus('error')
@@ -77,11 +89,32 @@ export function ExtensionFetchCard() {
       return
     }
 
-    setSnapshot(response.snapshot)
+    const nextSnapshot = mergeMonarchImport(snapshot, response.snapshot, response.meta)
+    const diffs = buildAccountDiffs(snapshot, nextSnapshot)
+    setPendingSnapshot(nextSnapshot)
+    setAccountDiffs(diffs)
     setStatus('success')
     setMeta(response.meta)
-    setMessage(buildSuccessMessage(response))
+    setMessage(diffs.length ? 'Review the proposed updates below before applying.' : 'Holdings refreshed. Apply the snapshot to continue.')
+  }
+
+  function applyPendingSnapshot() {
+    if (!pendingSnapshot) return
+    setSnapshot(pendingSnapshot)
+    setPendingSnapshot(null)
+    setAccountDiffs([])
+    setStatus('idle')
+    setMeta(undefined)
+    setMessage('')
     navigate('/snapshot')
+  }
+
+  function discardPendingSnapshot() {
+    setPendingSnapshot(null)
+    setAccountDiffs([])
+    setStatus('idle')
+    setMeta(undefined)
+    setMessage('')
   }
 
   return (
@@ -118,6 +151,13 @@ export function ExtensionFetchCard() {
               </Typography>
             )}
           </Alert>
+        )}
+        {pendingSnapshot && (
+          <AccountDiffPreview
+            diffs={accountDiffs}
+            onApply={applyPendingSnapshot}
+            onCancel={discardPendingSnapshot}
+          />
         )}
         {!runtimeAvailable && (
           <Alert severity="info" sx={{ mt: 2 }}>
@@ -159,4 +199,56 @@ function buildSuccessMessage(response: FetchResponse): string {
     return `Snapshot fetched at ${ts}`
   }
   return 'Snapshot fetched from extension'
+}
+
+function AccountDiffPreview({ diffs, onApply, onCancel }: { diffs: AccountDiff[]; onApply: () => void; onCancel: () => void }) {
+  const hasChanges = diffs.length > 0
+  return (
+    <Box sx={{ mt: 3 }}>
+      <Typography variant="h6">Review Account Updates</Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Confirm the changes below to update your snapshot. New or updated accounts are highlighted in green; removed accounts are red.
+      </Typography>
+      {hasChanges ? (
+        <Stack spacing={1.5}>
+          {diffs.map((diff) => (
+            <DiffRow key={diff.id} diff={diff} />
+          ))}
+        </Stack>
+      ) : (
+        <Paper variant="outlined" sx={{ p: 2 }}>
+          <Typography color="text.secondary">No account balance changes detected. Applying will still refresh holdings and prices.</Typography>
+        </Paper>
+      )}
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mt: 3 }}>
+        <Button variant="contained" color="primary" onClick={onApply}>
+          Apply Updates
+        </Button>
+        <Button variant="outlined" color="inherit" onClick={onCancel}>
+          Discard
+        </Button>
+      </Stack>
+    </Box>
+  )
+}
+
+function DiffRow({ diff }: { diff: AccountDiff }) {
+  const { change, name, id, type, oldValue, newValue } = diff
+  const isRemoval = change === 'removed'
+  const accent = isRemoval ? 'error.main' : 'success.main'
+  let description: string
+  if (change === 'new') {
+    description = `New account detected. Balance ${formatCurrency(newValue)}`
+  } else if (change === 'removed') {
+    description = `Account missing from latest Monarch data. Previous balance ${formatCurrency(oldValue)}`
+  } else {
+    description = `Balance ${formatCurrency(oldValue)} → ${formatCurrency(newValue)}`
+  }
+  return (
+    <Paper variant="outlined" sx={{ p: 2, borderLeft: '4px solid', borderColor: accent }}>
+      <Typography variant="subtitle2">{name || id}</Typography>
+      <Typography variant="caption" color="text.secondary">{`${type} • ${id}`}</Typography>
+      <Typography variant="body2" sx={{ mt: 0.5, color: accent }}>{description}</Typography>
+    </Paper>
+  )
 }
