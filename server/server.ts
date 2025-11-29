@@ -77,9 +77,25 @@ class ThinkingFilter {
   }
 }
 
+type ChatHistoryMessage = { role: string; parts?: { text: string }[] }
+
+function mapHistoryToGemini(history: ChatHistoryMessage[] = []): ChatHistoryMessage[] {
+  return history.map((item) => ({
+    role: item.role,
+    parts: item.parts || [{ text: '' }]
+  }))
+}
+
+function mapHistoryToOpenAI(history: ChatHistoryMessage[] = []) {
+  return history.map((msg) => ({
+    role: msg.role === 'model' ? 'assistant' : 'user',
+    content: (msg.parts || []).map((p) => p.text).join('\n')
+  }))
+}
+
 app.post('/api/generate', async (req, res) => {
   try {
-    const { prompt, history } = req.body;
+    const { prompt, history } = req.body as { prompt: string; history?: ChatHistoryMessage[] };
 
     if (!prompt) {
       return res.status(400).send('Prompt is required.');
@@ -123,7 +139,7 @@ app.post('/api/generate', async (req, res) => {
       });
 
       const chat = model.startChat({
-        history: history || [],
+        history: mapHistoryToGemini(history),
       });
 
       const result = await chat.sendMessageStream(prompt);
@@ -132,9 +148,10 @@ app.post('/api/generate', async (req, res) => {
         res.write(thinkingFilter.transform(chunk.text()));
       }
     } else if (llmProvider === 'OPENAI' && openai) {
+      const priorMessages = mapHistoryToOpenAI(history)
       const stream = await openai.chat.completions.create({
         model: openaiModel,
-        messages: [{ role: 'user', content: prompt }],
+        messages: [...priorMessages, { role: 'user', content: prompt }],
         stream: true,
       });
 

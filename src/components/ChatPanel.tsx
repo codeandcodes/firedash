@@ -5,6 +5,7 @@ import { useChat } from '@state/ChatContext';
 import { callBackendApi } from '../services/backend';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 
 interface ChatPanelProps {
   open: boolean;
@@ -40,20 +41,21 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ open, setOpen, width, setW
   const handleSendMessage = async () => {
     if (!userMessage) return;
 
-    const newChatHistory = [...chatHistory, { role: 'user', parts: [{ text: userMessage }] }];
-    setChatHistory(newChatHistory);
+    const pendingHistory = [...chatHistory];
+    const nextChatHistory = [...pendingHistory, { role: 'user', parts: [{ text: userMessage }] }];
+    setChatHistory(nextChatHistory);
     setUserMessage('');
 
     const data = {
       prompt: userMessage,
       context,
-      history: newChatHistory,
+      history: pendingHistory,
     };
 
     let llmResponse = '';
     await callBackendApi(data, (chunk) => {
       llmResponse += chunk;
-      setChatHistory([...newChatHistory, { role: 'model', parts: [{ text: llmResponse }] }]);
+      setChatHistory([...nextChatHistory, { role: 'model', parts: [{ text: llmResponse }] }]);
     });
   };
 
@@ -135,7 +137,9 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ open, setOpen, width, setW
         )}
         {chatHistory.map((chat, index) => (
           <Paper key={index} elevation={1} sx={{ p: 1, mb: 1, bgcolor: chat.role === 'user' ? '#f0f0f0' : '#fff' }}>
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{chat.parts[0].text}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
+              {chat.parts[0].text}
+            </ReactMarkdown>
           </Paper>
         ))}
       </Box>

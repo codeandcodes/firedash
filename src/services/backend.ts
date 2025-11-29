@@ -1,26 +1,48 @@
-export const callBackendApi = async (data: any, onChunk: (chunk: string) => void): Promise<void> => {
-  const { goals, snapshot, history } = data;
+import type { Snapshot } from '@types/schema'
+import type { ChatMessage } from '@state/ChatContext'
+import { buildLLMSnapshotContext } from '../utils/snapshotContext'
 
-  const prompt = `
-    **System Prompt:**
-    You are a financial analyst. Your task is to analyze the user's portfolio for any weaknesses in terms of longevity and wealth preservation. Provide a detailed analysis and actionable recommendations.
+type BackendRequest =
+  | { goals: string; snapshot: Snapshot; history?: ChatMessage[] }
+  | { prompt: string; context?: any; history?: ChatMessage[] }
 
-    **User Goals:**
-    ${goals}
+const ANALYSIS_PROMPT = (goals: string, snapshot: Snapshot) => `
+**System Prompt:**
+You are a financial analyst. Your task is to analyze the user's portfolio for any weaknesses in terms of longevity and wealth preservation. Provide a detailed analysis and actionable recommendations.
 
-    **User Portfolio Snapshot:**
-    ${JSON.stringify(snapshot, null, 2)}
+**User Goals:**
+${goals}
 
-    **Analysis Request:**
-    Based on the user's goals and portfolio snapshot, please provide a detailed analysis of their financial situation. The analysis should cover the following aspects:
+**User Portfolio Snapshot:**
+${JSON.stringify(buildLLMSnapshotContext(snapshot), null, 2)}
 
-    1.  **Asset Allocation:** Evaluate the current asset allocation and its suitability for the user's stated goals. Provide specific recommendations for adjustments if necessary.
-    2.  **Longevity:** Project how long the user's portfolio is likely to last based on their current spending and savings rate. Compare this to their target retirement age.
-    3.  **Goals:** Assess the feasibility of the user's financial goals and provide actionable steps they can take to achieve them.
-    4.  **Weaknesses:** Identify any potential weaknesses in the portfolio in terms of longevity and wealth preservation.
+**Analysis Request:**
+Based on the user's goals and portfolio snapshot, provide a detailed analysis that covers:
+1. **Asset Allocation:** Suitability for goals and specific adjustments.
+2. **Longevity:** Project runway vs. retirement target.
+3. **Goals:** Feasibility and concrete next steps.
+4. **Weaknesses:** Risks to longevity and wealth preservation.
 
-    Please provide a clear, concise, and actionable analysis in Markdown format.
-  `;
+Respond in clear Markdown with actionable guidance.
+`
+
+const CHAT_PROMPT = (prompt: string, context?: any) => `
+You are Firedash's financial planning copilot. Answer follow-up questions using the provided context when available and keep responses concise but actionable. Format responses in Markdown.
+${context ? `\nContext:\n${JSON.stringify(context, null, 2)}` : ''}
+
+User request:
+${prompt}
+`
+
+export const callBackendApi = async (data: BackendRequest, onChunk: (chunk: string) => void): Promise<void> => {
+  const history = data.history || []
+  let prompt: string
+
+  if ('snapshot' in data) {
+    prompt = ANALYSIS_PROMPT(data.goals, data.snapshot)
+  } else {
+    prompt = CHAT_PROMPT(data.prompt, data.context)
+  }
 
   const response = await fetch('/api/generate', {
     method: 'POST',

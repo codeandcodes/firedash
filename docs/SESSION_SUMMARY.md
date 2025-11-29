@@ -85,3 +85,5 @@ This document summarizes the major changes, architecture, and key functions so w
 - Overhauled Results with per‑year quantiles, Yearly Balance Sheet/Flows, Paths Remaining, CSV export; fixed NaN/zero collapse and depletion handling; removed deterministic panel and made percentile selector sticky with highlighted line on the fan chart.
 - Builder optimizations (pagination, lazy preview) and Holding Name field; Snapshot shows Ticker or Name.
 - MultiLineChart tooltip guards undefined values.
+- Chrome extension Monarch import now merges into the existing snapshot with a diff/confirmation panel so holdings refreshes can be reviewed before applying; merge helper preserves mortgages/rentals and new Vitest coverage was added.
+- AI assistant revamp: chat history is persisted across turns, condensed snapshot context is shown in Portfolio Analysis “advanced” mode, prompts send a trimmed snapshot projection, and the assistant panel now renders full Markdown/HTML (lists, tables) with context injection controls.

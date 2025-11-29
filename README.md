@@ -77,6 +77,12 @@ person?: { current_age? }
 - Results: Scenario Options (sliders/selects, percentile selector). Worker pool + progressive MC percentiles (historical bootstrap only); per‑year aggregation (P10..P90). Yearly Balance Sheet with CSV export (+ Alive_Frac), Yearly Flows chart (returns/income vs expenditures), retirement markers. The percentile selector highlights the selected line on the fan chart and updates the final-balance summary.
 - What‑Ifs: Unified Sensitivity + Scenarios. Compare Baseline vs Variant (inflation, spend, retirement age) and run monthly drawdown search for success targets (Optimistic/Realistic/Conservative). Charts overlay Monte Carlo percentiles for clarity.
 - Historical: Upload/replace historical returns (IndexedDB); Yearly Returns chart with axes/hover; Sanity Stats table
+- Upload: Chrome extension fetch includes a diff/confirmation view so you can review new/removed/updated accounts before applying refreshed Monarch holdings.
+
+## AI Assistant
+- Persistent chat panel that streams LLM responses (Gemini or OpenAI) with full Markdown + HTML rendering (tables, lists).
+- Builder/Snapshot pages can push “context” (selected account, charts) into the assistant so follow-up questions stay grounded.
+- Portfolio Analysis page runs a one-shot analysis using a condensed snapshot context; toggle “Show condensed LLM context” to preview exactly what is sent to the model.
 
 ## Commands
 - Dev: `make dev`  → Vite dev server
