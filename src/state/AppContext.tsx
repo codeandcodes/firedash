@@ -5,6 +5,8 @@ import type { SimOptions } from '@types/engine'
 interface AppState {
   snapshot: Snapshot | null
   setSnapshot: (s: Snapshot | null) => void
+  snapshotSource?: string
+  setSnapshotSource: (source?: string) => void
   simOptions: Required<Pick<SimOptions, 'years' | 'paths' | 'rebalFreq' | 'inflation'>> & {
     bootstrapBlockMonths: number
     bootstrapNoiseSigma: number
@@ -17,6 +19,7 @@ const Ctx = createContext<AppState | undefined>(undefined)
 
 export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
+  const [snapshotSource, setSnapshotSource] = useState<string | undefined>(undefined)
   const defaultWorkers = Math.max(1, Math.min((typeof navigator !== 'undefined' ? (navigator.hardwareConcurrency || 4) : 4), 8))
   const [simOptionsState, setSimOptionsState] = useState<Required<Pick<SimOptions, 'years' | 'paths' | 'rebalFreq' | 'inflation'>> & { bootstrapBlockMonths: number; bootstrapNoiseSigma: number; maxWorkers: number }>(
     { years: 40, paths: 1000, rebalFreq: 'annual', inflation: 0.02, bootstrapBlockMonths: 24, bootstrapNoiseSigma: 0.005, maxWorkers: defaultWorkers }
@@ -25,6 +28,8 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
   const ctxVal = useMemo(() => ({
     snapshot,
     setSnapshot,
+    snapshotSource,
+    setSnapshotSource,
     simOptions: simOptionsState,
     setSimOptions: (s: Partial<SimOptions>) => setSimOptionsState((prev) => ({
       years: s.years ?? prev.years,
@@ -48,4 +53,5 @@ export function useApp(): AppState {
 /*
 Global app context: holds current snapshot and simulation options.
 - simOptions carries bootstrap controls and worker limits used by Monte Carlo runs.
+- snapshotSource tracks where the current snapshot came from (file name, sync source, etc.).
 */

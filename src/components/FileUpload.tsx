@@ -3,16 +3,18 @@ import { useNavigate } from 'react-router-dom'
 import { useApp } from '@state/AppContext'
 import { resultsKey, scenariosKey, saveCache, loadCache } from '@state/cache'
 import { validateSnapshot } from '@types/schema'
-import { Box, Button, Typography } from '@mui/material'
+import { Alert, Box, Button, Stack, Typography } from '@mui/material'
 
 export const FileUpload: React.FC = () => {
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [errors, setErrors] = useState<string[]>([])
-  const { setSnapshot, simOptions } = useApp() as any
+  const [loadedName, setLoadedName] = useState<string | null>(null)
+  const { setSnapshot, simOptions, setSnapshotSource } = useApp() as any
   const navigate = useNavigate()
 
   async function onFileSelected(file: File) {
     setErrors([])
+    setLoadedName(null)
     try {
       const text = await file.text()
       const json = JSON.parse(text)
@@ -22,8 +24,8 @@ export const FileUpload: React.FC = () => {
         return
       }
       setSnapshot(json)
-      // Start processing immediately: navigate to results
-      navigate('/results')
+      setSnapshotSource(file.name || 'Uploaded JSON')
+      setLoadedName(file.name || 'Snapshot')
       // Optionally kick off background scenarios precompute (best-effort)
       try {
         const targets = [
@@ -105,6 +107,28 @@ export const FileUpload: React.FC = () => {
             ))}
           </ul>
         </Box>
+      )}
+      {loadedName && errors.length === 0 && (
+        <Alert severity="success" sx={{ mt: 2 }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'flex-start', sm: 'center' }} justifyContent="space-between">
+            <Box>
+              <Typography variant="subtitle2">Snapshot loaded</Typography>
+              <Typography variant="body2" color="text.secondary">{loadedName}</Typography>
+            </Box>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+              <Button variant="contained" size="small" onClick={() => navigate('/results')}>Run Monte Carlo</Button>
+              <Button variant="outlined" size="small" onClick={() => navigate('/builder')}>Edit in Builder</Button>
+              <Button variant="text" size="small" onClick={() => {
+                const el = document.getElementById('monarch-fetch')
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                } else {
+                  navigate('/upload#monarch')
+                }
+              }}>Update from Monarch</Button>
+            </Stack>
+          </Stack>
+        </Alert>
       )}
     </>
   )

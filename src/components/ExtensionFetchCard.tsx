@@ -90,12 +90,13 @@ export function ExtensionFetchCard() {
     }
 
     const nextSnapshot = mergeMonarchImport(snapshot, response.snapshot, response.meta)
-    const diffs = buildAccountDiffs(snapshot, nextSnapshot)
+    const diffs = buildAccountDiffs(snapshot, nextSnapshot, { includeUnchanged: true })
+    const changed = diffs.filter((d) => d.change !== 'unchanged')
     setPendingSnapshot(nextSnapshot)
     setAccountDiffs(diffs)
     setStatus('success')
     setMeta(response.meta)
-    setMessage(diffs.length ? 'Review the proposed updates below before applying.' : 'Holdings refreshed. Apply the snapshot to continue.')
+    setMessage(changed.length ? 'Review the proposed updates below before applying.' : 'Holdings refreshed. Apply the snapshot to continue.')
   }
 
   function applyPendingSnapshot() {
@@ -118,7 +119,7 @@ export function ExtensionFetchCard() {
   }
 
   return (
-    <Card sx={{ mt: 3 }}>
+    <Card id="monarch-fetch" sx={{ mt: 3 }}>
       <CardContent>
         <Typography variant="h5" gutterBottom>Fetch Live Snapshot (Chrome Extension)</Typography>
         <Typography color="text.secondary" sx={{ mb: 2 }}>
@@ -202,16 +203,28 @@ function buildSuccessMessage(response: FetchResponse): string {
 }
 
 function AccountDiffPreview({ diffs, onApply, onCancel }: { diffs: AccountDiff[]; onApply: () => void; onCancel: () => void }) {
-  const hasChanges = diffs.length > 0
+  const [showUnchanged, setShowUnchanged] = useState(false)
+  const changedDiffs = diffs.filter((d) => d.change !== 'unchanged')
+  const visible = showUnchanged ? diffs : changedDiffs
+  const hasChanges = visible.length > 0
+  const hasUnchanged = diffs.some((d) => d.change === 'unchanged')
   return (
     <Box sx={{ mt: 3 }}>
       <Typography variant="h6">Review Account Updates</Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
         Confirm the changes below to update your snapshot. New or updated accounts are highlighted in green; removed accounts are red.
       </Typography>
+      {hasUnchanged && (
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+          <Button variant="text" size="small" onClick={() => setShowUnchanged((v) => !v)}>
+            {showUnchanged ? 'Hide unchanged accounts' : 'Show unchanged accounts'}
+          </Button>
+          {!showUnchanged && <Typography variant="caption" color="text.secondary">Unchanged accounts are hidden.</Typography>}
+        </Stack>
+      )}
       {hasChanges ? (
         <Stack spacing={1.5}>
-          {diffs.map((diff) => (
+          {visible.map((diff) => (
             <DiffRow key={diff.id} diff={diff} />
           ))}
         </Stack>
@@ -235,12 +248,14 @@ function AccountDiffPreview({ diffs, onApply, onCancel }: { diffs: AccountDiff[]
 function DiffRow({ diff }: { diff: AccountDiff }) {
   const { change, name, id, type, oldValue, newValue, institution } = diff
   const isRemoval = change === 'removed'
-  const accent = isRemoval ? 'error.main' : 'success.main'
+  const accent = isRemoval ? 'error.main' : change === 'unchanged' ? 'text.secondary' : 'success.main'
   let description: string
   if (change === 'new') {
     description = `New account detected. Balance ${formatCurrency(newValue)}`
   } else if (change === 'removed') {
     description = `Account missing from latest Monarch data. Previous balance ${formatCurrency(oldValue)}`
+  } else if (change === 'unchanged') {
+    description = `No balance change detected (${formatCurrency(oldValue)})`
   } else {
     description = `Balance ${formatCurrency(oldValue)} → ${formatCurrency(newValue)}`
   }

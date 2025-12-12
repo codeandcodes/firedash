@@ -1,6 +1,6 @@
 import type { Account, Snapshot } from '@types/schema'
 
-export type AccountChangeType = 'new' | 'removed' | 'updated'
+export type AccountChangeType = 'new' | 'removed' | 'updated' | 'unchanged'
 
 export interface AccountDiff {
   id: string
@@ -57,7 +57,11 @@ function extractInstitution(account: Account | undefined): string | undefined {
   return undefined
 }
 
-export function buildAccountDiffs(base: Snapshot | null | undefined, next: Snapshot): AccountDiff[] {
+export function buildAccountDiffs(
+  base: Snapshot | null | undefined,
+  next: Snapshot,
+  opts?: { includeUnchanged?: boolean }
+): AccountDiff[] {
   const diffs: AccountDiff[] = []
   const baseAccounts = new Map<string, Account>()
   if (base?.accounts?.length) {
@@ -94,6 +98,16 @@ export function buildAccountDiffs(base: Snapshot | null | undefined, next: Snaps
           newValue,
           institution: extractInstitution(acc) || extractInstitution(prev)
         })
+      } else if (opts?.includeUnchanged) {
+        diffs.push({
+          id: acc.id,
+          name: acc.name || prev.name,
+          type: acc.type,
+          change: 'unchanged',
+          oldValue,
+          newValue,
+          institution: extractInstitution(acc) || extractInstitution(prev)
+        })
       }
       baseAccounts.delete(acc.id)
     }
@@ -110,7 +124,7 @@ export function buildAccountDiffs(base: Snapshot | null | undefined, next: Snaps
     })
   }
 
-  const order: Record<AccountChangeType, number> = { removed: 0, updated: 1, new: 2 }
+  const order: Record<AccountChangeType, number> = { removed: 0, updated: 1, new: 2, unchanged: 3 }
   return diffs.sort((a, b) => {
     const orderDiff = order[a.change] - order[b.change]
     if (orderDiff !== 0) return orderDiff

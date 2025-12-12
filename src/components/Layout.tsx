@@ -1,6 +1,6 @@
 import React from 'react'
-import { Link, useLocation } from 'react-router-dom'
-import { AppBar, Box, CssBaseline, Divider, Drawer, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Toolbar, Typography, useMediaQuery } from '@mui/material'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { AppBar, Box, Button, CssBaseline, Divider, Drawer, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Paper, Stack, Toolbar, Typography, useMediaQuery } from '@mui/material'
 import MenuIcon from '@mui/icons-material/Menu'
 import Brightness4Icon from '@mui/icons-material/Brightness4'
 import Brightness7Icon from '@mui/icons-material/Brightness7'
@@ -13,6 +13,7 @@ import InsightsIcon from '@mui/icons-material/Insights'
 import AutoGraphIcon from '@mui/icons-material/AutoGraph'
 import ScienceIcon from '@mui/icons-material/Science';
 import { ChatPanel } from './ChatPanel';
+import { useApp } from '@state/AppContext'
 
 const drawerWidth = 260
 const navItems = [
@@ -28,9 +29,11 @@ export const Layout: React.FC<React.PropsWithChildren> = ({ children }) => {
   const [mobileOpen, setMobileOpen] = React.useState(false)
   const [chatPanelOpen, setChatPanelOpen] = React.useState(true);
   const { pathname } = useLocation()
+  const navigate = useNavigate()
   const theme = useTheme()
   const { toggle } = useThemeMode()
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
+  const { snapshot, snapshotSource } = useApp()
 
   const drawer = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 2 }}>
@@ -86,6 +89,8 @@ export const Layout: React.FC<React.PropsWithChildren> = ({ children }) => {
   )
 
   const [chatPanelWidth, setChatPanelWidth] = React.useState(400);
+  const snapshotLabel = snapshot?.name || snapshotSource || 'Snapshot loaded'
+  const timestamp = snapshot?.timestamp ? new Date(snapshot.timestamp).toLocaleString() : null
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
@@ -147,6 +152,24 @@ export const Layout: React.FC<React.PropsWithChildren> = ({ children }) => {
         }}
       >
         <Toolbar sx={{ display: { sm: 'none' } }} />
+        {snapshot && (
+          <Paper variant="outlined" sx={{ mb: 2, p: 2, borderLeft: '4px solid', borderColor: 'primary.main' }}>
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ xs: 'flex-start', md: 'center' }} justifyContent="space-between">
+              <Box>
+                <Typography variant="subtitle2">Snapshot loaded</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {snapshotLabel}
+                  {timestamp ? ` • ${timestamp}` : ''}
+                </Typography>
+              </Box>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                <Button variant="contained" size="small" onClick={() => navigate('/results')}>View Results</Button>
+                <Button variant="outlined" size="small" onClick={() => navigate('/builder')}>Edit in Builder</Button>
+                <Button variant="text" size="small" onClick={() => navigate('/upload#monarch')}>Update from Monarch</Button>
+              </Stack>
+            </Stack>
+          </Paper>
+        )}
         {children}
       </Box>
       <ChatPanel open={chatPanelOpen} setOpen={setChatPanelOpen} width={chatPanelWidth} setWidth={setChatPanelWidth} />
