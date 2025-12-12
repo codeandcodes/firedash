@@ -28,6 +28,7 @@ const navItems = [
 export const Layout: React.FC<React.PropsWithChildren> = ({ children }) => {
   const [mobileOpen, setMobileOpen] = React.useState(false)
   const [chatPanelOpen, setChatPanelOpen] = React.useState(true);
+  const [snapshotCollapsed, setSnapshotCollapsed] = React.useState(false)
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const theme = useTheme()
@@ -78,16 +79,25 @@ export const Layout: React.FC<React.PropsWithChildren> = ({ children }) => {
       </List>
       {snapshot && (
         <Paper variant="outlined" sx={{ p: 1.5, mb: 1.5, borderRadius: 2, borderColor: 'primary.main', bgcolor: 'background.paper' }}>
-          <Typography variant="caption" color="text.secondary">Snapshot loaded</Typography>
-          <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.4 }}>{snapshot?.name || snapshotSource || 'Snapshot'}</Typography>
-          {snapshot?.timestamp && (
-            <Typography variant="caption" color="text.secondary">{new Date(snapshot.timestamp).toLocaleString()}</Typography>
-          )}
-          <Stack spacing={0.5} sx={{ mt: 1 }}>
-            <Button variant="contained" size="small" onClick={() => navigate('/results')}>View Results</Button>
-            <Button variant="outlined" size="small" onClick={() => navigate('/builder')}>Edit in Builder</Button>
-            <Button variant="text" size="small" onClick={() => navigate('/upload#monarch')}>Update from Monarch</Button>
+          <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
+            <Box>
+              <Typography variant="caption" color="text.secondary">Snapshot loaded</Typography>
+              <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.4 }}>{snapshot?.name || snapshotSource || 'Snapshot'}</Typography>
+              {snapshot?.timestamp && (
+                <Typography variant="caption" color="text.secondary">{new Date(snapshot.timestamp).toLocaleString()}</Typography>
+              )}
+            </Box>
+            <Button size="small" variant="text" onClick={() => setSnapshotCollapsed((v) => !v)}>
+              {snapshotCollapsed ? 'Show' : 'Hide'}
+            </Button>
           </Stack>
+          {!snapshotCollapsed && (
+            <Stack spacing={0.5} sx={{ mt: 1 }}>
+              <Button variant="contained" size="small" onClick={() => navigate('/results')}>View Results</Button>
+              <Button variant="outlined" size="small" onClick={() => navigate('/builder')}>Edit in Builder</Button>
+              <Button variant="text" size="small" onClick={() => navigate('/upload#monarch')}>Update from Monarch</Button>
+            </Stack>
+          )}
         </Paper>
       )}
       <Box sx={{ mt: 'auto', pt: 2 }}>
