@@ -9,7 +9,6 @@ This document summarizes the major changes, architecture, and key functions so w
 
 ## Core Features Implemented
 - Upload/Builder: Upload snapshot or paste Monarch JSON; Builder edits all sections; per-account pies and holdings tables.
-- Historical Data UI: Upload and persist monthly returns in IndexedDB; Yearly Returns chart with axes/hover; Sanity Stats panel (yearly means/vols and correlation).
 - Simulation Engine:
   - Deterministic path (fixed real monthly returns derived from annual means).
   - Monte Carlo: Historical block bootstrap from data/historical_returns.json (annual Damodaran returns expanded to monthly, sampled in 12‑month blocks with noise for intra‑year dispersion).
@@ -38,7 +37,7 @@ This document summarizes the major changes, architecture, and key functions so w
 
 ## UI / State
 - Material UI AppBar+Drawer; Theme toggle (AppThemeProvider).
-- ScenarioOptions: sliders for years/paths/inflation and percentile selector; Max Workers; Select for rebalancing; block/noise controls for historical bootstrap; debounced sliders and tooltips.
+- ScenarioOptions: sliders for years/paths/inflation and percentile selector; Max Workers; Select for rebalancing; debounced sliders and tooltips.
 - BuilderPage: Monarch import; Accordions for General/Retirement; Accounts (Ticker/Name inputs), Real Estate (with estimate helper), Contributions, Expenses, Social Security; pagination for large holdings; lazy preview; inline validation/tooltips.
 - Snapshot: KPI cards; global allocation pie; per-account pies and holdings; clicking account name jumps to its detail card.
 - Results: Monte Carlo worker pool with progressive updates using P^2 quantiles; per‑year end‑balance aggregation (P10/P25/P50/P75/P90) and Alive_Frac (paths remaining). Yearly Balance Sheet with CSV export and retirement badges; Yearly Flows chart with centered bars and retirement marker; fan chart highlights the selected percentile and the summary card shows its final balance. Caching stores yearEnds and aliveFrac.
@@ -67,7 +66,6 @@ This document summarizes the major changes, architecture, and key functions so w
 - Historical parser: Parse monthly Home Prices and Gold Prices sheets for richer monthly dynamics; merge with Damodaran series.
 - Withdrawal policies (guardrails/VPW) and tax-lot sale logic.
 - Spend search: show ETA, allow cancel; consider deeper parallelization.
-- CSV parser for historical upload.
 
 ## How to Run / Re-generate Historical Data
 - Dev: `npm install` then `make dev`.

@@ -1,23 +1,22 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { AppBar, Box, CssBaseline, Divider, Drawer, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Toolbar, Typography } from '@mui/material'
+import { AppBar, Box, CssBaseline, Divider, Drawer, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Toolbar, Typography, useMediaQuery } from '@mui/material'
 import MenuIcon from '@mui/icons-material/Menu'
 import Brightness4Icon from '@mui/icons-material/Brightness4'
 import Brightness7Icon from '@mui/icons-material/Brightness7'
 import { useTheme } from '@mui/material/styles'
 import { useThemeMode } from '@state/ThemeContext'
 import CloudUploadIcon from '@mui/icons-material/CloudUpload'
-import QueryStatsIcon from '@mui/icons-material/QueryStats'
 import BuildIcon from '@mui/icons-material/Build'
 import PieChartOutlineIcon from '@mui/icons-material/PieChartOutline'
 import InsightsIcon from '@mui/icons-material/Insights'
 import AutoGraphIcon from '@mui/icons-material/AutoGraph'
 import ScienceIcon from '@mui/icons-material/Science';
+import { ChatPanel } from './ChatPanel';
 
-const drawerWidth = 240
+const drawerWidth = 260
 const navItems = [
   { to: '/upload', label: 'Upload', icon: <CloudUploadIcon fontSize="small" /> },
-  { to: '/historical', label: 'Historical Data', icon: <QueryStatsIcon fontSize="small" /> },
   { to: '/builder', label: 'Builder', icon: <BuildIcon fontSize="small" /> },
   { to: '/snapshot', label: 'Snapshot', icon: <PieChartOutlineIcon fontSize="small" /> },
   { to: '/results', label: 'Results', icon: <InsightsIcon fontSize="small" /> },
@@ -25,60 +24,129 @@ const navItems = [
   { to: '/analysis', label: 'Analysis', icon: <ScienceIcon fontSize="small" /> }
 ]
 
-import { ChatPanel } from './ChatPanel';
-
 export const Layout: React.FC<React.PropsWithChildren> = ({ children }) => {
   const [mobileOpen, setMobileOpen] = React.useState(false)
   const [chatPanelOpen, setChatPanelOpen] = React.useState(true);
   const { pathname } = useLocation()
   const theme = useTheme()
   const { toggle } = useThemeMode()
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'))
 
   const drawer = (
-    <div>
-      <Toolbar><Typography variant="h6" color="primary">🔥 Firedash</Typography></Toolbar>
-      <Divider />
-      <List>
-        {navItems.map((item) => (
-          <ListItem key={item.to} disablePadding>
-            <ListItemButton component={Link} to={item.to} selected={pathname === item.to} onClick={() => setMobileOpen(false)}>
-              {item.icon && <ListItemIcon sx={{ minWidth: 32 }}>{item.icon}</ListItemIcon>}
-              <ListItemText primary={item.label} />
-            </ListItemButton>
-          </ListItem>
-        ))}
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 2 }}>
+      <Toolbar sx={{ px: 1, mb: 2 }}>
+        <Typography variant="h5" sx={{ fontWeight: 800, background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          🔥 Firedash
+        </Typography>
+      </Toolbar>
+      <List sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
+        {navItems.map((item) => {
+          const isActive = pathname === item.to
+          return (
+            <ListItem key={item.to} disablePadding>
+              <ListItemButton
+                component={Link}
+                to={item.to}
+                onClick={() => setMobileOpen(false)}
+                sx={{
+                  borderRadius: '9999px',
+                  mb: 0.5,
+                  backgroundColor: isActive ? theme.palette.primary.light + '20' : 'transparent',
+                  color: isActive ? theme.palette.primary.main : theme.palette.text.secondary,
+                  '&:hover': {
+                    backgroundColor: isActive ? theme.palette.primary.light + '30' : theme.palette.action.hover,
+                  }
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 40, color: isActive ? theme.palette.primary.main : theme.palette.text.secondary }}>
+                  {item.icon}
+                </ListItemIcon>
+                <ListItemText
+                  primary={item.label}
+                  primaryTypographyProps={{
+                    fontWeight: isActive ? 600 : 500,
+                    fontSize: '0.9rem'
+                  }}
+                />
+              </ListItemButton>
+            </ListItem>
+          )
+        })}
       </List>
-    </div>
+      <Box sx={{ mt: 'auto', pt: 2 }}>
+        <Divider sx={{ mb: 2 }} />
+        <ListItemButton onClick={toggle} sx={{ borderRadius: '9999px' }}>
+          <ListItemIcon sx={{ minWidth: 40 }}>
+            {theme.palette.mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
+          </ListItemIcon>
+          <ListItemText primary={theme.palette.mode === 'dark' ? 'Light Mode' : 'Dark Mode'} />
+        </ListItemButton>
+      </Box>
+    </Box>
   )
 
   const [chatPanelWidth, setChatPanelWidth] = React.useState(400);
 
   return (
-    <Box sx={{ display: 'flex' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
       <CssBaseline />
-      <AppBar position="fixed" sx={{ zIndex: (t) => t.zIndex.drawer + 1 }}>
+      <AppBar
+        position="fixed"
+        sx={{
+          width: { sm: `calc(100% - ${drawerWidth}px)` },
+          ml: { sm: `${drawerWidth}px` },
+          display: { sm: 'none' },
+          bgcolor: 'background.paper',
+          color: 'text.primary',
+          boxShadow: 1
+        }}
+      >
         <Toolbar>
           <IconButton color="inherit" edge="start" onClick={() => setMobileOpen(!mobileOpen)} sx={{ mr: 2, display: { sm: 'none' } }}>
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>Firedash</Typography>
-          <IconButton color="inherit" onClick={toggle}>
-            {theme.palette.mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
-          </IconButton>
         </Toolbar>
       </AppBar>
+
       <Box component="nav" sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }} aria-label="navigation">
-        <Drawer variant="temporary" open={mobileOpen} onClose={() => setMobileOpen(false)}
-                ModalProps={{ keepMounted: true }}
-                sx={{ display: { xs: 'block', sm: 'none' }, '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth } }}>
+        <Drawer
+          variant="temporary"
+          open={mobileOpen}
+          onClose={() => setMobileOpen(false)}
+          ModalProps={{ keepMounted: true }}
+          sx={{
+            display: { xs: 'block', sm: 'none' },
+            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth, border: 'none' }
+          }}
+        >
           {drawer}
         </Drawer>
-        <Drawer variant="permanent" sx={{ display: { xs: 'none', sm: 'block' }, '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth } }} open>
+        <Drawer
+          variant="permanent"
+          sx={{
+            display: { xs: 'none', sm: 'block' },
+            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth, borderRight: '1px solid', borderColor: 'divider' }
+          }}
+          open
+        >
           {drawer}
         </Drawer>
       </Box>
-      <Box component="main" sx={{ flexGrow: 1, p: 3, width: { sm: `calc(100% - ${drawerWidth}px - ${chatPanelOpen ? chatPanelWidth : 0}px)` } }}>
-        <Toolbar />
+
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          p: 4,
+          width: { sm: `calc(100% - ${drawerWidth}px - ${chatPanelOpen ? chatPanelWidth : 0}px)` },
+          transition: theme.transitions.create(['width', 'margin'], {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.leavingScreen,
+          }),
+        }}
+      >
+        <Toolbar sx={{ display: { sm: 'none' } }} />
         {children}
       </Box>
       <ChatPanel open={chatPanelOpen} setOpen={setChatPanelOpen} width={chatPanelWidth} setWidth={setChatPanelWidth} />

@@ -6,7 +6,7 @@ Firedash is a private, web-based dashboard for planning Financial Independence /
 - Snapshot-based, no live account linking; all data local by default
 - Monarch JSON importer with robust grouping (brokerage, crypto, other) and Holding name support
 - Deterministic and Monte Carlo simulations (historical bootstrap)
-- Historical block bootstrap using long-run asset-class returns; in-app Historical Data upload with IndexedDB persistence and yearly performance charts + sanity stats
+- Historical block bootstrap using bundled long-run asset-class returns
 - Real estate modeling with carrying costs and mortgage amortization; SS begins at claim age
 - Unified What‑Ifs (Sensitivity + Scenarios) with baseline vs variant and target success spend search
 - Results overhaul: per‑year quantiles (P10/P25/P50/P75/P90), Yearly Balance Sheet, Yearly Flows, Paths Remaining, CSV export
@@ -29,8 +29,8 @@ Open the Vite dev URL (typically http://localhost:5173).
 - Fetch live Monarch data with the optional Chrome extension (see `extension/README.md`).
 
 - Results
-  - Adjust Monte Carlo bootstrap settings (block length, noise) in Scenario Options
-  - Adjust Years, Paths, Rebalancing, Inflation, Max Workers; Bootstrap Block/Noise
+  - Monte Carlo uses bundled historical bootstrap data with sensible defaults
+  - Adjust Years, Paths, Rebalancing, Inflation, Max Workers
   - MC runs in Web Workers with a pool and progressive percentile updates; cache persists results
 
 ## Simulation Modes
@@ -44,8 +44,6 @@ Open the Vite dev URL (typically http://localhost:5173).
 ```
 node scripts/parse_histret.mjs
 ```
-- In‑app: Upload CSV/JSON via Historical Data page (stored in IndexedDB), view yearly returns chart and sanity stats (means/vols/corrs).
-- Bootstrap controls live in Scenario Options (Block months, Noise σ).
 
 ## Monarch Importer
 - Paste raw Monarch “Aggregate Holdings” JSON in Builder → Import Investments.
@@ -76,7 +74,6 @@ person?: { current_age? }
 - Snapshot: KPI cards; global allocation pie; per‑account pies by ticker + holdings tables; rounded, right‑aligned values; clicking an account name jumps to its details
 - Results: Scenario Options (sliders/selects, percentile selector). Worker pool + progressive MC percentiles (historical bootstrap only); per‑year aggregation (P10..P90). Yearly Balance Sheet with CSV export (+ Alive_Frac), Yearly Flows chart (returns/income vs expenditures), retirement markers. The percentile selector highlights the selected line on the fan chart and updates the final-balance summary.
 - What‑Ifs: Unified Sensitivity + Scenarios. Compare Baseline vs Variant (inflation, spend, retirement age) and run monthly drawdown search for success targets (Optimistic/Realistic/Conservative). Charts overlay Monte Carlo percentiles for clarity.
-- Historical: Upload/replace historical returns (IndexedDB); Yearly Returns chart with axes/hover; Sanity Stats table
 - Upload: Chrome extension fetch includes a diff/confirmation view so you can review new/removed/updated accounts before applying refreshed Monarch holdings.
 
 ## AI Assistant

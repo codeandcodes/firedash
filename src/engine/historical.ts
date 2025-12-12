@@ -17,13 +17,19 @@ export interface BootstrapOptions {
   jitterSigma: number // extra white noise std added to sampled returns
 }
 
+export interface BootstrapSampler {
+  next(): Record<AssetClass, number>
+  block: number
+  annualMode: boolean
+}
+
 export function tryLoadHistorical(): HistoricalDataset | null {
   const data = (overrideDataset as HistoricalDataset | null) ?? (datasetJson as HistoricalDataset)
   if (data && Array.isArray(data.rows)) return data
   return null
 }
 
-export function createBootstrapSampler(dataset: HistoricalDataset, months: number, assets: AssetClass[], opts: BootstrapOptions, rng: RandomContext) {
+export function createBootstrapSampler(dataset: HistoricalDataset, months: number, assets: AssetClass[], opts: BootstrapOptions, rng: RandomContext): BootstrapSampler {
   const rows = dataset.rows.slice().sort((a, b) => a.year === b.year ? a.month - b.month : a.year - b.year)
   if (!rows.length) throw new Error('Historical dataset has no rows')
   // Build per-asset sequences
@@ -75,7 +81,9 @@ export function createBootstrapSampler(dataset: HistoricalDataset, months: numbe
     remaining -= take
   }
   let idx = 0
-  return {
+  const sampler: BootstrapSampler = {
+    block,
+    annualMode,
     next(): Record<AssetClass, number> {
       const ret: Record<AssetClass, number> = {} as any
       for (const a of assets) {
@@ -90,6 +98,7 @@ export function createBootstrapSampler(dataset: HistoricalDataset, months: numbe
       return ret
     }
   }
+  return sampler
 }
 /*
 Historical block bootstrap sampler.
