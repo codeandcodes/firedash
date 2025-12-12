@@ -12,8 +12,6 @@ import PieChartOutlineIcon from '@mui/icons-material/PieChartOutline'
 import InsightsIcon from '@mui/icons-material/Insights'
 import AutoGraphIcon from '@mui/icons-material/AutoGraph'
 import ScienceIcon from '@mui/icons-material/Science';
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
-import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import { ChatPanel } from './ChatPanel';
 import { useApp } from '@state/AppContext'
 
@@ -131,7 +129,7 @@ export const Layout: React.FC<React.PropsWithChildren> = ({ children }) => {
         </ListItemButton>
         <ListItemButton onClick={() => setDrawerCollapsed((v) => !v)} sx={{ borderRadius: '9999px', mt: 1 }}>
           <ListItemIcon sx={{ minWidth: 40 }}>
-            {drawerCollapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+            <MenuIcon />
           </ListItemIcon>
           {!drawerCollapsed && <ListItemText primary={drawerCollapsed ? 'Expand' : 'Collapse'} />}
         </ListItemButton>
