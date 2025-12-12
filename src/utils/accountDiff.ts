@@ -9,6 +9,7 @@ export interface AccountDiff {
   change: AccountChangeType
   oldValue?: number
   newValue?: number
+  institution?: string
 }
 
 const VALUE_EPSILON = 0.01
@@ -28,6 +29,34 @@ function computeAccountValue(account: Account): number {
   return holdingsValue + cash
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value)
+}
+
+function readInstitutionName(value: unknown): string | undefined {
+  if (typeof value === 'string') return value
+  if (isRecord(value)) {
+    const name = value.name
+    return typeof name === 'string' ? name : undefined
+  }
+  return undefined
+}
+
+function extractInstitution(account: Account | undefined): string | undefined {
+  if (!account || !isRecord(account.metadata)) return undefined
+  const metadata = account.metadata as Record<string, unknown>
+  const direct = readInstitutionName(metadata.institution)
+  if (direct) return direct
+  const credential = metadata.credential
+  const credentialInstitution = readInstitutionName(credential)
+  if (credentialInstitution) return credentialInstitution
+  if (isRecord(credential)) {
+    const nested = readInstitutionName(credential.institution)
+    if (nested) return nested
+  }
+  return undefined
+}
+
 export function buildAccountDiffs(base: Snapshot | null | undefined, next: Snapshot): AccountDiff[] {
   const diffs: AccountDiff[] = []
   const baseAccounts = new Map<string, Account>()
@@ -44,19 +73,41 @@ export function buildAccountDiffs(base: Snapshot | null | undefined, next: Snaps
     const prev = baseAccounts.get(acc.id)
     const newValue = computeAccountValue(acc)
     if (!prev) {
-      diffs.push({ id: acc.id, name: acc.name, type: acc.type, change: 'new', newValue })
+      diffs.push({
+        id: acc.id,
+        name: acc.name,
+        type: acc.type,
+        change: 'new',
+        newValue,
+        institution: extractInstitution(acc)
+      })
     } else {
       const oldValue = computeAccountValue(prev)
       const diffAmount = Math.abs(newValue - oldValue)
       if (diffAmount > VALUE_EPSILON) {
-        diffs.push({ id: acc.id, name: acc.name || prev.name, type: acc.type, change: 'updated', oldValue, newValue })
+        diffs.push({
+          id: acc.id,
+          name: acc.name || prev.name,
+          type: acc.type,
+          change: 'updated',
+          oldValue,
+          newValue,
+          institution: extractInstitution(acc) || extractInstitution(prev)
+        })
       }
       baseAccounts.delete(acc.id)
     }
   }
 
   for (const leftover of baseAccounts.values()) {
-    diffs.push({ id: leftover.id, name: leftover.name, type: leftover.type, change: 'removed', oldValue: computeAccountValue(leftover) })
+    diffs.push({
+      id: leftover.id,
+      name: leftover.name,
+      type: leftover.type,
+      change: 'removed',
+      oldValue: computeAccountValue(leftover),
+      institution: extractInstitution(leftover)
+    })
   }
 
   const order: Record<AccountChangeType, number> = { removed: 0, updated: 1, new: 2 }

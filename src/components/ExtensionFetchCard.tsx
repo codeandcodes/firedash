@@ -233,7 +233,7 @@ function AccountDiffPreview({ diffs, onApply, onCancel }: { diffs: AccountDiff[]
 }
 
 function DiffRow({ diff }: { diff: AccountDiff }) {
-  const { change, name, id, type, oldValue, newValue } = diff
+  const { change, name, id, type, oldValue, newValue, institution } = diff
   const isRemoval = change === 'removed'
   const accent = isRemoval ? 'error.main' : 'success.main'
   let description: string
@@ -247,7 +247,9 @@ function DiffRow({ diff }: { diff: AccountDiff }) {
   return (
     <Paper variant="outlined" sx={{ p: 2, borderLeft: '4px solid', borderColor: accent }}>
       <Typography variant="subtitle2">{name || id}</Typography>
-      <Typography variant="caption" color="text.secondary">{`${type} • ${id}`}</Typography>
+      <Typography variant="caption" color="text.secondary">
+        {[type, institution, id].filter(Boolean).join(' • ')}
+      </Typography>
       <Typography variant="body2" sx={{ mt: 0.5, color: accent }}>{description}</Typography>
     </Paper>
   )
